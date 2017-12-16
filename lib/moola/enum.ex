@@ -1,0 +1,3 @@
+import EctoEnum
+
+defenum Moola.Enum.Symbol, "btc-usd": 1, "eth-usd": 2, "ltc-usd": 3
