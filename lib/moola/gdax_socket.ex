@@ -73,20 +73,15 @@ defmodule Moola.GDAXSocket do
           |> reset_time(symbol, now)
           |> reset_volume(symbol)
 
-        s when s < 60 ->
+        elapsed when elapsed < 60 ->
           state
           |> accumulate_volume(symbol, size)
 
-        s when s > 65 ->  # Too much time between ticks- is API down?
+        elapsed -> 
+          save_ticker(state, msg, 60.0*(volume(state, symbol) + size)/elapsed)
           state
           |> reset_time(symbol, now)
           |> reset_volume(symbol)
-
-        expired -> 
-          save_ticker(state, msg, volume(state, symbol))
-          state
-          |> reset_time(symbol, now)
-          |> reset_volume(symbol, size)
       end
     else
       _ -> nil
