@@ -17,7 +17,9 @@ defmodule Moola.GDAXSocket do
     subscription = %{
       type: "subscribe",
       product_ids: @product_ids,
-      channels: ["heartbeat", %{name: "ticker", product_ids: @product_ids}]
+      channels: ["heartbeat", 
+                  %{name: "matches", product_ids: @product_ids}
+                ]
     }
     |> Poison.encode!
   end
@@ -61,6 +63,33 @@ defmodule Moola.GDAXSocket do
     end
   end
   
+  def process_payload(type, msg, state) when type in ["match", "last_match"] do
+
+    with symbol <- msg |> Map.get("product_id") |> symbolize,
+      {:ok, now, _} <- msg |> Map.get("time") |> DateTime.from_iso8601,
+      {size, _} <-  msg |> Map.get("size") |> Float.parse do
+
+      case elapsed_time(state, symbol, now) do
+        nil -> 
+          state
+          |> reset_time(symbol, now)
+          |> reset_volume(symbol, size)
+
+        elapsed when elapsed < 60 ->
+          state
+          |> accumulate_volume(symbol, size)
+
+        elapsed -> 
+          save_ticker(state, msg, 60.0*(volume(state, symbol) + size)/elapsed)
+          state
+          |> reset_time(symbol, now)
+          |> reset_volume(symbol)
+      end
+    else
+      _ -> nil
+    end
+  end
+
   def process_payload("ticker", msg, state) do
 
     with symbol <- msg |> Map.get("product_id") |> symbolize,

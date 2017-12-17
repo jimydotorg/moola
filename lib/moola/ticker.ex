@@ -12,7 +12,7 @@ defmodule Moola.Ticker do
     field :timestamp, :utc_datetime
   end
 
-  def changeset(%Ticker{} = ticker, attrs, %{"type" => "ticker"} = msg_attrs) do
+  def changeset(%Ticker{} = ticker, attrs, %{"type" => type} = msg_attrs) when type in ["ticker", "match"] do
     attrs = case DateTime.from_iso8601(msg_attrs["time"]) do
       {:ok, dt, _} -> 
         attrs
