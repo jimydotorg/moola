@@ -25,7 +25,7 @@ defmodule Moola.Ticker do
     end
 
     attrs = attrs
-    |> Map.put(:symbol, msg_attrs |> Map.get("product_id") |> symbolize |> ZX.i)
+    |> Map.put(:symbol, msg_attrs |> Map.get("product_id") |> symbolize)
     |> Map.put(:price, msg_attrs |> Map.get("price"))
 
     changeset(ticker, attrs)
@@ -33,7 +33,7 @@ defmodule Moola.Ticker do
 
   def changeset(%Ticker{} = ticker, attrs) do
     ticker
-    |> cast(attrs, [:symbol, :price, :volume_60s, :hour, :minute, :timestamp])
-    |> validate_required([:symbol, :price, :volume_60s, :hour, :minute, :timestamp])
+    |> cast(attrs, [:symbol, :price, :volume_60s, :hour, :minute, :day_of_week, :timestamp])
+    |> validate_required([:symbol, :price, :volume_60s, :hour, :minute, :day_of_week, :timestamp])
   end
 end

@@ -42,6 +42,9 @@ defmodule Moola.Mixfile do
       {:phoenix_ecto, "~> 3.2"},
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
+      
+      {:edeliver, "~> 1.4.3"},
+      {:distillery, "~> 1.4"},
 
       {:websockex, "~> 0.4.0"},
       {:comeonin, "~> 4.0"},
