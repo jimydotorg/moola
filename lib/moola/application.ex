@@ -12,8 +12,10 @@ defmodule Moola.Application do
       supervisor(Moola.Repo, []),
       # Start the endpoint when the application starts
       supervisor(MoolaWeb.Endpoint, []),
+
       # Start your own worker by calling: Moola.Worker.start_link(arg1, arg2, arg3)
       # worker(Moola.Worker, [arg1, arg2, arg3]),
+      worker(Moola.GDAXSocket, []),
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -5,7 +5,10 @@ defmodule Moola.Repo.Migrations.CreateTicks do
     create table(:ticks) do
       add :symbol, :integer
       add :price, :float
-      add :volume_60s, :float
+      add :max_price, :float
+      add :min_price, :float
+      add :volume, :float
+      add :usd_volume, :float 
 
       add :hour, :integer
       add :minute, :integer

@@ -5,7 +5,10 @@ defmodule Moola.Ticker do
   schema "ticks" do
     field :symbol, Moola.Enum.Symbol
     field :price, :float
-    field :volume_60s, :float
+    field :max_price, :float
+    field :min_price, :float
+    field :volume, :float
+    field :usd_volume, :float
     field :hour, :integer
     field :minute, :integer
     field :day_of_week, :integer
@@ -33,7 +36,7 @@ defmodule Moola.Ticker do
 
   def changeset(%Ticker{} = ticker, attrs) do
     ticker
-    |> cast(attrs, [:symbol, :price, :volume_60s, :hour, :minute, :day_of_week, :timestamp])
-    |> validate_required([:symbol, :price, :volume_60s, :hour, :minute, :day_of_week, :timestamp])
+    |> cast(attrs, [:symbol, :price, :max_price, :min_price, :volume, :usd_volume, :hour, :minute, :day_of_week, :timestamp])
+    |> validate_required([:symbol, :price, :volume, :hour, :minute, :day_of_week, :timestamp])
   end
 end

@@ -6,6 +6,8 @@ defmodule Moola.GDAXSocket do
   alias Moola.Ticker
 
   @product_ids ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC"]
+  @gdax_socket "wss://ws-feed.gdax.com/"
+  @ticker_period 15.0
 
   @moduledoc ~S"""
   ```
@@ -13,6 +15,23 @@ defmodule Moola.GDAXSocket do
   ```
   """
      
+  def start_link(url \\ @gdax_socket) do
+    init_state = %{
+      timestamps: %{}, 
+      volumes: %{},
+      prices: %{},
+      max_prices: %{},
+      min_prices: %{}
+    }
+
+    case WebSockex.start(url, __MODULE__, init_state) do
+      {:ok, pid} = result -> 
+        WebSockex.send_frame(pid, {:text, subscriptions})
+        result
+      err -> err
+    end
+  end
+
   def subscriptions do
     subscription = %{
       type: "subscribe",
@@ -24,23 +43,8 @@ defmodule Moola.GDAXSocket do
     |> Poison.encode!
   end
 
-  def start(url) do
-
-    init_state = %{
-      timestamps: %{}, 
-      volumes: %{}
-    }
-
-    case WebSockex.start(url, __MODULE__, init_state) do
-      {:ok, pid} = result -> 
-        WebSockex.send_frame(pid, {:text, subscriptions})
-        result
-      err -> err
-    end
-  end
-
-  def start!(url \\ "wss://ws-feed.gdax.com/") do
-    case start(url) do
+  def start!(url \\ @gdax_socket) do
+    case start_link(url) do
       {:ok, pid} -> pid
       _ -> nil
     end
@@ -67,21 +71,25 @@ defmodule Moola.GDAXSocket do
 
     with symbol <- msg |> Map.get("product_id") |> symbolize,
       {:ok, now, _} <- msg |> Map.get("time") |> DateTime.from_iso8601,
+      {price, _} <- msg |> Map.get("price") |> Float.parse,
       {size, _} <-  msg |> Map.get("size") |> Float.parse do
 
       case elapsed_time(state, symbol, now) do
         nil -> 
           state
+          |> update_prices(symbol, price)
           |> reset_time(symbol, now)
           |> reset_volume(symbol, size)
 
-        elapsed when elapsed < 60 ->
+        elapsed when elapsed < @ticker_period ->
           state
+          |> update_prices(symbol, price)
           |> accumulate_volume(symbol, size)
 
         elapsed -> 
-          save_ticker(state, msg, 60.0*(volume(state, symbol) + size)/elapsed)
+          save_ticker(symbol, state, msg, @ticker_period * (volume(state, symbol) + size)/elapsed)
           state
+          |> update_prices(symbol, price)
           |> reset_time(symbol, now)
           |> reset_volume(symbol)
       end
@@ -94,21 +102,26 @@ defmodule Moola.GDAXSocket do
 
     with symbol <- msg |> Map.get("product_id") |> symbolize,
       {:ok, now, _} <- msg |> Map.get("time") |> DateTime.from_iso8601,
+      {price, _} <- msg |> Map.get("price") |> Float.parse,
       {size, _} <-  msg |> Map.get("last_size") |> Float.parse do
 
       case elapsed_time(state, symbol, now) do
         nil -> 
           state
+          |> update_prices(symbol, price)
           |> reset_time(symbol, now)
           |> reset_volume(symbol)
 
-        elapsed when elapsed < 60 ->
+        elapsed when elapsed < @ticker_period ->
           state
+          |> update_prices(symbol, price)
           |> accumulate_volume(symbol, size)
 
         elapsed -> 
-          save_ticker(state, msg, 60.0*(volume(state, symbol) + size)/elapsed)
+          save_ticker(symbol, state, msg, @ticker_period * (volume(state, symbol) + size)/elapsed)
           state
+          |> update_prices(symbol, price)
+          |> reset_prices
           |> reset_time(symbol, now)
           |> reset_volume(symbol)
       end
@@ -158,9 +171,46 @@ defmodule Moola.GDAXSocket do
     %{state | volumes: volumes}
   end
 
-  defp save_ticker(state, message, volume) do
+  defp save_ticker(symbol, state, message, volume) do
+    attrs = %{
+      volume: volume,
+      usd_volume: usd_volume(state, symbol, volume),
+      min_price: state |> Map.get(:min_prices) |> Map.get(symbol),
+      max_price: state |> Map.get(:max_prices) |> Map.get(symbol)
+    }
+
     %Ticker{}
-    |> Ticker.changeset(%{volume_60s: volume}, message)
+    |> Ticker.changeset(attrs, message)
     |> Repo.insert
+  end
+
+  defp update_prices(state, symbol, price) do
+    x_price = Map.get(state, :max_prices) |> Map.get(symbol, 0)
+    n_price = Map.get(state, :min_prices) |> Map.get(symbol, 100000000)
+    max_prices =  Map.get(state, :max_prices) |> Map.put(symbol, max(price, x_price))
+    min_prices =  Map.get(state, :min_prices) |> Map.put(symbol, min(price, n_price))
+    prices = Map.get(state, :prices) |> Map.put(symbol, price)
+    %{state | prices: prices, min_prices: min_prices, max_prices: max_prices}
+  end
+
+  defp reset_prices(state) do
+    prices = Map.get(state, :prices)
+    %{state | min_prices: prices, max_prices: prices}
+  end
+
+  defp usd_volume(state, symbol, volume) do
+    prices = Map.get(state, :prices)
+    case symbol do
+      :"eth-btc" -> 
+        with btc_usd when is_float(btc_usd) <- Map.get(prices, :"btc-usd"),
+          eth_btc when is_float(eth_btc) <- Map.get(prices, :"eth-btc") do
+          volume * eth_btc * btc_usd
+        end
+      _ -> 
+        case Map.get(prices, symbol) do
+          nil -> nil
+          rate -> volume * rate
+        end
+    end
   end
 end
