@@ -90,6 +90,7 @@ defmodule Moola.GDAXSocket do
           save_ticker(symbol, state, msg, @ticker_period * (volume(state, symbol) + size)/elapsed)
           state
           |> update_prices(symbol, price)
+          |> reset_prices
           |> reset_time(symbol, now)
           |> reset_volume(symbol)
       end
