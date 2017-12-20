@@ -1,3 +1,14 @@
+defmodule Moola.AssocAccess do
+
+  defmacro __using__(_params) do
+    quote do
+      def load_assoc(%{} = item, assoc), do: item |> Moola.Repo.preload(assoc)
+      def get_assoc(%{} = item, assoc, default \\ nil), do: item |> load_assoc(assoc) |> Map.get(assoc, default)
+    end
+  end
+
+end
+
 defmodule Moola do
   @moduledoc """
   Moola keeps the contexts that define your domain
@@ -16,6 +27,30 @@ defmodule Moola do
       use Moola.AssocAccess
       use ZXUtil.IdHasher
       import Moola.Util
+    end
+  end
+
+  def context do
+    quote do
+      import Ecto.Query, warn: false
+      alias Ecto.Changeset
+      alias Moola.Repo
+
+      import ZXUtil.IdHasher
+      import Moola.Util
+      import Moola.NotifyChannels
+
+      alias Moola.User
+      alias Moola.Log
+    end
+  end
+
+  def encoder do
+    quote do
+      import ZXUtil.IdHasher
+      import Moola.Util
+
+      alias Moola.User
     end
   end
 

@@ -5,7 +5,7 @@ defmodule Moola.GDAXSocket do
   alias Moola.Repo
   alias Moola.Ticker
 
-  @product_ids ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC"]
+  @product_ids ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD", "BCH-BTC"]
   @gdax_socket "wss://ws-feed.gdax.com/"
   @ticker_period 15.0
 
@@ -26,6 +26,8 @@ defmodule Moola.GDAXSocket do
 
     case WebSockex.start(url, __MODULE__, init_state) do
       {:ok, pid} = result -> 
+        pid |> Process.register(Moola.GDAXSocket)
+        Moola.GDAXState.start_link
         WebSockex.send_frame(pid, {:text, subscriptions})
         result
       err -> err
@@ -74,9 +76,12 @@ defmodule Moola.GDAXSocket do
       {price, _} <- msg |> Map.get("price") |> Float.parse,
       {size, _} <-  msg |> Map.get("size") |> Float.parse do
 
+      Moola.GDAXState.put(symbol, %{price: price})
+      
       case elapsed_time(state, symbol, now) do
         nil -> 
           state
+          |> ZX.i(symbol)
           |> update_prices(symbol, price)
           |> reset_time(symbol, now)
           |> reset_volume(symbol, size)
@@ -206,6 +211,11 @@ defmodule Moola.GDAXSocket do
         with btc_usd when is_float(btc_usd) <- Map.get(prices, :"btc-usd"),
           eth_btc when is_float(eth_btc) <- Map.get(prices, :"eth-btc") do
           volume * eth_btc * btc_usd
+        end
+      :"bch-btc" -> 
+        with btc_usd when is_float(btc_usd) <- Map.get(prices, :"btc-usd"),
+          bch_btc when is_float(bch_btc) <- Map.get(prices, :"bch-btc") do
+          volume * bch_btc * btc_usd
         end
       _ -> 
         case Map.get(prices, symbol) do
