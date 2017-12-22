@@ -16,12 +16,13 @@ defmodule Moola.DollarBuyer do
   alias Moola.GDAXState
 
   # @period_targets ["eth-usd": 8.0, "btc-usd": 2.00, "bch-usd": 1.00, "ltc-usd": 0.0]
-  @period_targets ["eth-usd": 100.0, "btc-usd": 100.00, "bch-usd": 25.00, "ltc-usd": 10.00]
+  @period_targets ["eth-usd": 50.0, "btc-usd": 100.00, "bch-usd": 25.00, "ltc-usd": 0.00]
   @period_duration_seconds 360
   @min_usd_balance 100.00
 
   @one_hour 3600
   @one_minute 60
+  @check_period 18
 
   def start_link, do: GenServer.start_link(__MODULE__, %{})
 
@@ -66,7 +67,7 @@ defmodule Moola.DollarBuyer do
 
       cond do
         status == :error -> 5 * @one_minute |> ZX.i("ERROR: #{message}")
-        true -> @one_minute
+        true -> @check_period
       end
     else
       _ -> @one_hour
