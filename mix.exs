@@ -36,6 +36,7 @@ defmodule Moola.Mixfile do
       {:postgrex, ">= 0.0.0"},
       {:ecto, "~> 2.1"},
       {:ecto_enum, "~> 1.0"},
+      {:decimal, "~> 1.0"},
 
       {:phoenix, "~> 1.3.0"},
       {:phoenix_pubsub, "~> 1.0"},

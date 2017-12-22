@@ -4,8 +4,8 @@ defmodule Moola.Repo.Migrations.CreateGdaxOrders do
   def change do
     create table(:gdax_orders) do
       add :gdax_id, :string
-      add :price, :float
-      add :size, :float
+      add :price, :decimal
+      add :size, :decimal
       add :symbol, :integer
       add :product_id, :string
       add :side, :string
@@ -13,15 +13,16 @@ defmodule Moola.Repo.Migrations.CreateGdaxOrders do
       add :type, :string
       add :time_in_force, :string
       add :post_only, :boolean, default: false, null: false
-      add :created_at, :utc_datetime
-      add :fill_fees, :float
-      add :filled_size, :float
-      add :executed_value, :float
+      add :fill_fees, :decimal
+      add :filled_size, :decimal
+      add :executed_value, :decimal
       add :status, :string
       add :settled, :boolean, default: false, null: false
-
-      timestamps()
+      add :created_at, :utc_datetime
     end
+
+    create unique_index(:gdax_orders, [:gdax_id])
+    create index(:gdax_orders, [:symbol])
 
   end
 end

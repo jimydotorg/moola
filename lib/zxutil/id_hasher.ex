@@ -26,7 +26,7 @@ defmodule ZXUtil.IdHasher do
 
   defmacro __using__(_params) do
     quote do
-      @behavior ZXUtil.IdHasher
+      @behaviour ZXUtil.IdHasher
 
       def hashid(id) when is_integer(id), do: ZXUtil.IdHasher.hashid(id)
       def hashid(%{:id => id}), do: hashid(id)

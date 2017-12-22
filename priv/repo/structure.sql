@@ -71,14 +71,53 @@ ALTER SEQUENCE client_tokens_id_seq OWNED BY client_tokens.id;
 
 
 --
+-- Name: gdax_fills; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE gdax_fills (
+    id bigint NOT NULL,
+    trade_id integer,
+    symbol integer,
+    order_id character varying(255),
+    product_id character varying(255),
+    price numeric,
+    size numeric,
+    liquidity character varying(255),
+    fee numeric,
+    settled boolean DEFAULT false NOT NULL,
+    side character varying(255),
+    created_at timestamp without time zone
+);
+
+
+--
+-- Name: gdax_fills_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE gdax_fills_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: gdax_fills_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE gdax_fills_id_seq OWNED BY gdax_fills.id;
+
+
+--
 -- Name: gdax_orders; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE gdax_orders (
     id bigint NOT NULL,
     gdax_id character varying(255),
-    price double precision,
-    size double precision,
+    price numeric,
+    size numeric,
     symbol integer,
     product_id character varying(255),
     side character varying(255),
@@ -86,14 +125,12 @@ CREATE TABLE gdax_orders (
     type character varying(255),
     time_in_force character varying(255),
     post_only boolean DEFAULT false NOT NULL,
-    created_at timestamp without time zone,
-    fill_fees double precision,
-    filled_size double precision,
-    executed_value double precision,
+    fill_fees numeric,
+    filled_size numeric,
+    executed_value numeric,
     status character varying(255),
     settled boolean DEFAULT false NOT NULL,
-    inserted_at timestamp without time zone NOT NULL,
-    updated_at timestamp without time zone NOT NULL
+    created_at timestamp without time zone
 );
 
 
@@ -199,11 +236,11 @@ CREATE TABLE schema_migrations (
 CREATE TABLE ticks (
     id bigint NOT NULL,
     symbol integer,
-    price double precision,
-    max_price double precision,
-    min_price double precision,
-    volume double precision,
-    usd_volume double precision,
+    price numeric,
+    max_price numeric,
+    min_price numeric,
+    volume numeric,
+    usd_volume numeric,
     hour integer,
     minute integer,
     day_of_week integer,
@@ -307,6 +344,13 @@ ALTER TABLE ONLY client_tokens ALTER COLUMN id SET DEFAULT nextval('client_token
 
 
 --
+-- Name: gdax_fills id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY gdax_fills ALTER COLUMN id SET DEFAULT nextval('gdax_fills_id_seq'::regclass);
+
+
+--
 -- Name: gdax_orders id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -354,6 +398,14 @@ ALTER TABLE ONLY users ALTER COLUMN id SET DEFAULT nextval('users_id_seq'::regcl
 
 ALTER TABLE ONLY client_tokens
     ADD CONSTRAINT client_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: gdax_fills gdax_fills_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY gdax_fills
+    ADD CONSTRAINT gdax_fills_pkey PRIMARY KEY (id);
 
 
 --
@@ -417,6 +469,34 @@ ALTER TABLE ONLY users
 --
 
 CREATE UNIQUE INDEX client_tokens_token_index ON client_tokens USING btree (token);
+
+
+--
+-- Name: gdax_fills_symbol_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX gdax_fills_symbol_index ON gdax_fills USING btree (symbol);
+
+
+--
+-- Name: gdax_fills_trade_id_symbol_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX gdax_fills_trade_id_symbol_index ON gdax_fills USING btree (trade_id, symbol);
+
+
+--
+-- Name: gdax_orders_gdax_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX gdax_orders_gdax_id_index ON gdax_orders USING btree (gdax_id);
+
+
+--
+-- Name: gdax_orders_symbol_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX gdax_orders_symbol_index ON gdax_orders USING btree (symbol);
 
 
 --
@@ -518,5 +598,5 @@ ALTER TABLE ONLY user_tokens
 -- PostgreSQL database dump complete
 --
 
-INSERT INTO "schema_migrations" (version) VALUES (20171216034812), (20171218032627), (20171218032634), (20171218032638), (20171218032639), (20171220044208);
+INSERT INTO "schema_migrations" (version) VALUES (20171216034812), (20171218032627), (20171218032634), (20171218032638), (20171218032639), (20171220044208), (20171221043239);
 

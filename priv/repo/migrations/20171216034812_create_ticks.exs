@@ -4,11 +4,11 @@ defmodule Moola.Repo.Migrations.CreateTicks do
   def change do
     create table(:ticks) do
       add :symbol, :integer
-      add :price, :float
-      add :max_price, :float
-      add :min_price, :float
-      add :volume, :float
-      add :usd_volume, :float 
+      add :price, :decimal
+      add :max_price, :decimal
+      add :min_price, :decimal
+      add :volume, :decimal
+      add :usd_volume, :decimal 
 
       add :hour, :integer
       add :minute, :integer

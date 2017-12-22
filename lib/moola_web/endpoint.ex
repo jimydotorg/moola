@@ -52,4 +52,7 @@ defmodule MoolaWeb.Endpoint do
       {:ok, config}
     end
   end
+
+  def api_version, do: "1.0"
+  
 end

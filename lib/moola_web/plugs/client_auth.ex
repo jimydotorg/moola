@@ -1,6 +1,6 @@
 defmodule MoolaWeb.Plugs.ExtractClient do
   import Plug.Conn
-  alias Shop.Auth
+  alias Moola.Auth
 
   def init(default) do
     default

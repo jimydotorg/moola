@@ -17,6 +17,7 @@ defmodule Moola.Application do
       # worker(Moola.Worker, [arg1, arg2, arg3]),
 
       worker(Moola.GDAXSocket, []),
+      worker(Moola.DollarBuyer, []),
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

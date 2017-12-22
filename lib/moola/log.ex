@@ -4,8 +4,6 @@ defmodule Moola.Log do
   """
 
   use Moola, :context
-  import Moola.LogQuery
-
   alias Moola.Event
   alias Moola.EventType
 
@@ -17,8 +15,6 @@ defmodule Moola.Log do
     end
     client
   end
-
-  def record(%Moola.ClientToken{} = client, name), do: record(client, name, nil)
 
   def record(%Plug.Conn{} = conn, name, info) do 
     record(conn.assigns[:client_token], name, info)
@@ -36,6 +32,7 @@ defmodule Moola.Log do
     end
   end
 
+  def record(%Moola.ClientToken{} = client, name), do: record(client, name, nil)
   def record(%Plug.Conn{} = conn, name), do: record(conn, name, nil)
   def record(%Phoenix.Socket{} = socket, name), do: record(socket, name, nil)
 

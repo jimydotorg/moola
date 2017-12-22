@@ -4,11 +4,11 @@ defmodule Moola.Ticker do
 
   schema "ticks" do
     field :symbol, Moola.Enum.Symbol
-    field :price, :float
-    field :max_price, :float
-    field :min_price, :float
-    field :volume, :float
-    field :usd_volume, :float
+    field :price, :decimal
+    field :max_price, :decimal
+    field :min_price, :decimal
+    field :volume, :decimal
+    field :usd_volume, :decimal
     field :hour, :integer
     field :minute, :integer
     field :day_of_week, :integer
