@@ -17,22 +17,30 @@ defmodule Moola.GDAX do
 
   def dollars_purchased(symbol, age) do
     D.set_context(%D.Context{D.get_context | precision: 10})
-    gdax_time = GDAXState.get(:time) || DateTime.utc_now
+    gdax_time = case GDAXState.get(:time) do
+      %{now: now} -> now
+      _ -> DateTime.utc_now
+    end
     FillQuery.query_fills(symbol: symbol, now: gdax_time, age: age)
     |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(D.mult(fill.size, fill.price)) end)
   end
 
   def buy_fixed_dollars(symbol, dollar_amount) do
     with info when is_map(info) <- GDAXState.get(symbol),
-      price <- info.price |> D.to_float do
-        bid_price = price - 0.01
-        size = dollar_amount / bid_price
+      now <- GDAXState.get(:time) |> Map.get(:now),
+      ticker_price <- info.price,
+      price <- D.min(info.highest_bid, info.lowest_ask),
+      price_time <- info.time,
+      elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
+      true <- elapsed < 5 do
+        my_bid_price = D.sub(price, D.new(0.01))
+        size = D.div(D.new(dollar_amount), my_bid_price)
 
-        ZX.i({bid_price, size}, symbol)
-        create_buy_order(symbol, bid_price, size)
+        ZX.i({ticker_price, my_bid_price, info.highest_bid, info.lowest_ask}, symbol)
+        create_buy_order(symbol, my_bid_price, size)
 
     else
-      _ -> {:error, "no current price info. Is GDAXSocket running?"}
+      _ -> {:error, "Been a while since the last transaction. Is GDAXSocket running?"} |> ZX.i
     end
   end
 

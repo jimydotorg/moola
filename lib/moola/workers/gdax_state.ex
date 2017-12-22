@@ -13,9 +13,10 @@ defmodule Moola.GDAXState do
         symbol = symbol |> downcase |> atomize
         send(caller, Map.get(map, symbol))
         loop(map)
-      {:put, symbol, value} ->
+      {:put, symbol, values} ->
         symbol = symbol |> downcase |> atomize
-        loop(Map.put(map, symbol, value)) 
+        new_values = Map.get(map, symbol, %{}) |> Map.merge(values)
+        loop(Map.put(map, symbol, new_values)) 
     end
   end
 

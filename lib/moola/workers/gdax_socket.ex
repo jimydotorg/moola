@@ -13,7 +13,9 @@ defmodule Moola.GDAXSocket do
   alias Moola.Repo
   alias Moola.Ticker
 
-  @product_ids ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
+  # @product_ids ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
+  @product_ids ["ETH-USD", "BTC-USD", "BCH-USD"]
+
   @gdax_socket "wss://ws-feed.gdax.com/"
   @ticker_period 15.0
      
@@ -23,7 +25,9 @@ defmodule Moola.GDAXSocket do
       volumes: %{},
       prices: %{},
       max_prices: %{},
-      min_prices: %{}
+      min_prices: %{},
+      asks: %{},
+      bids: %{},
     }
 
     D.set_context(%D.Context{D.get_context | precision: 2})
@@ -43,7 +47,8 @@ defmodule Moola.GDAXSocket do
       type: "subscribe",
       product_ids: @product_ids,
       channels: ["heartbeat", 
-                  %{name: "matches", product_ids: @product_ids}
+                  %{name: "matches", product_ids: @product_ids},
+                  %{name: "level2", product_ids: @product_ids},
                 ]
     }
     |> Poison.encode!
@@ -80,7 +85,7 @@ defmodule Moola.GDAXSocket do
       {:ok, price} <- msg |> Map.get("price") |> D.parse,
       {:ok, size} <-  msg |> Map.get("size") |> D.parse do
 
-      Moola.GDAXState.put(symbol, %{price: price})      
+      Moola.GDAXState.put(symbol, %{price: price, time: now})      
 
       case elapsed_time(state, symbol, now) do
         nil -> 
@@ -117,7 +122,37 @@ defmodule Moola.GDAXSocket do
 
   def process_payload("heartbeat", msg, state) do
     {:ok, now, _} = msg |> Map.get("time") |> DateTime.from_iso8601
-    Moola.GDAXState.put(:time, now)
+    Moola.GDAXState.put(:time, %{now: now})
+    state
+  end
+
+  def process_payload("snapshot", msg, state) do
+    symbol = msg["product_id"] |> symbolize
+    asks = msg["asks"] |> book_array_to_map
+    bids = msg["bids"] |> book_array_to_map
+
+    all_asks = Map.get(state, :asks) |> Map.put(symbol, asks)
+    all_bids = Map.get(state, :bids) |> Map.put(symbol, bids)
+
+    %{state | asks: all_asks, bids: all_bids}
+  end
+
+  def process_payload("l2update", msg, state) do
+    symbol = msg["product_id"] |> symbolize
+
+    state = msg["changes"]
+    |> Enum.reduce(
+        state, 
+        fn([side, level, size], acc) -> 
+          case side do
+            "buy" -> update_bid(acc, symbol, level, size)
+            "sell" -> update_ask(acc, symbol, level, size)
+            wtf -> ZX.i("WTF? #{wtf}")
+          end
+        end)
+
+    Moola.GDAXState.put(symbol, %{lowest_ask: lowest_ask(state, symbol), highest_bid: highest_bid(state, symbol)})      
+
     state
   end
 
@@ -207,4 +242,74 @@ defmodule Moola.GDAXSocket do
         end
     end
   end
+
+  defp book_array_to_map(array) do
+    array |> Enum.reduce(%{}, 
+      fn([price, size], acc) ->
+        acc |> Map.put(book_key(price), book_size(size))
+      end)
+  end
+
+  defp book_key(string_value) do
+    {f_price, _} = Float.parse(string_value)
+    round(f_price * 100)
+  end
+
+  defp value_for_key(key) do
+    D.div(D.new(key), D.new(100))
+  end
+
+  defp book_size(string_value) do
+    {:ok, d_size} = D.parse(string_value)
+    d_size
+  end
+
+  defp update_bid(state, symbol, level, size) do
+    my_bids = case size do
+      "0" -> 
+        state
+        |> Map.get(:bids)
+        |> Map.get(symbol)
+        |> Map.delete(book_key(level))
+      _ -> 
+        state
+        |> Map.get(:bids)
+        |> Map.get(symbol)
+        |> Map.put(book_key(level), book_size(size))
+    end
+
+    new_bids = state |> Map.get(:bids) |> Map.put(symbol, my_bids)
+    %{state | bids: new_bids}
+  end
+
+  defp update_ask(state, symbol, level, size) do
+    my_asks = case size do
+      "0" -> 
+        state
+        |> Map.get(:asks)
+        |> Map.get(symbol)
+        |> Map.delete(book_key(level))
+      _ ->     
+        state
+        |> Map.get(:asks)
+        |> Map.get(symbol)
+        |> Map.put(book_key(level), book_size(size))
+    end
+
+    new_asks = state |> Map.get(:asks) |> Map.put(symbol, my_asks)
+    %{state | asks: new_asks}
+  end
+
+  defp highest_bid(state, symbol) do
+    asks = state |> Map.get(:bids) |> Map.get(symbol |> symbolize)
+    {level, size} = asks |> Enum.sort(fn({k1, v1}, {k2, v2}) -> k1 > k2 end) |> Enum.at(0)
+    value_for_key(level)
+  end
+
+  defp lowest_ask(state, symbol) do
+    asks = state |> Map.get(:asks) |> Map.get(symbol |> symbolize)
+    {level, size} = asks |> Enum.sort(fn({k1, v1}, {k2, v2}) -> k1 < k2 end) |> Enum.at(0)
+    value_for_key(level)
+  end
+
 end
