@@ -2,13 +2,21 @@
 
 Manage your crypto Moola on Coinbase/GDAX.
 
-## How to
+## Getting Started
+
+    cp config/dev.secret.exs.sample config/dev.secret.exs
+    cp config/prod.secret.exs.sample config/prod.secret.exs
+
+Make sure your database info is set in `config/*.secret.exs`
+
+    mix deps.get
+    mix db.reset
+
+Set your API keys in `.env` or `config/*.secret.exs`
+
+If that succeeded, fire it up:
 
     iex -S mix
-
-## Setting your API Keys
-
-Set your API keys as shell env variables or in `config/*.secret.exs` files.
 
 ## Dollar Cost Buying
 
