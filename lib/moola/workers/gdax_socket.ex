@@ -13,11 +13,11 @@ defmodule Moola.GDAXSocket do
   alias Moola.Repo
   alias Moola.Ticker
 
-  @product_ids ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
-  @gdax_socket "wss://ws-feed.gdax.com/"
-  @ticker_period 15.0
+  def socket_url, do: Application.get_env(:moola, Moola.GDAXSocket)[:socket_url]
+  def ticker_period, do: Application.get_env(:moola, Moola.GDAXSocket)[:ticker_period]
+  def product_ids, do: Application.get_env(:moola, Moola.GDAXSocket)[:product_ids]
      
-  def start_link(url \\ @gdax_socket) do
+  def start_link() do
     init_state = %{
       timestamps: %{}, 
       volumes: %{},
@@ -30,7 +30,7 @@ defmodule Moola.GDAXSocket do
 
     D.set_context(%D.Context{D.get_context | precision: 2})
 
-    case WebSockex.start(url, __MODULE__, init_state) do
+    case WebSockex.start(socket_url(), __MODULE__, init_state) do
       {:ok, pid} = result -> 
         pid |> Process.register(Moola.GDAXSocket)
         WebSockex.send_frame(pid, {:text, subscriptions()})
@@ -42,18 +42,18 @@ defmodule Moola.GDAXSocket do
   def subscriptions do
     %{
       type: "subscribe",
-      product_ids: @product_ids,
+      product_ids: product_ids(),
       channels: ["heartbeat", 
-                  %{name: "ticker", product_ids: @product_ids},
-                  %{name: "matches", product_ids: @product_ids},
-                  %{name: "level2", product_ids: @product_ids},
+                  %{name: "ticker", product_ids: product_ids()},
+                  %{name: "matches", product_ids: product_ids()},
+                  %{name: "level2", product_ids: product_ids()},
                 ]
     }
     |> Poison.encode!
   end
 
-  def start!(url \\ @gdax_socket) do
-    case start_link(url) do
+  def start!() do
+    case start_link() do
       {:ok, pid} -> pid
       _ -> nil
     end
@@ -85,6 +85,8 @@ defmodule Moola.GDAXSocket do
 
       Moola.GDAXState.put(symbol, %{price: price, match_time: now})      
 
+      period = ticker_period()
+      
       case elapsed_time(state, symbol, now) do
         nil -> 
           state
@@ -92,7 +94,7 @@ defmodule Moola.GDAXSocket do
           |> reset_time(symbol, now)
           |> reset_volume(symbol, size)
 
-        elapsed when elapsed < @ticker_period ->
+        elapsed when elapsed < period ->
           state
           |> update_prices(symbol, price)
           |> accumulate_volume(symbol, size)
@@ -101,7 +103,7 @@ defmodule Moola.GDAXSocket do
           # Calculate volume using floats, since doing it in Decimal API renders it unreadable:
           fvolume = volume(state, symbol) |> D.to_float
           fsize = size |> D.to_float
-          fvolume = @ticker_period * (fvolume + fsize)/elapsed
+          fvolume = ticker_period() * (fvolume + fsize)/elapsed
           save_ticker(symbol, state, msg, D.new(fvolume))
 
           state

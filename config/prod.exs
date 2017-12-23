@@ -20,6 +20,11 @@ config :moola, MoolaWeb.Endpoint,
   server: true,
   code_reloader: false
 
+config :moola, Moola.GDAXSocket,
+  socket_url: "wss://ws-feed.gdax.com/"
+  ticker_period: 15.0
+  product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
+
 # Do not print debug messages in production
 config :logger, level: :info
 

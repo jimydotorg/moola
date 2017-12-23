@@ -13,6 +13,11 @@ config :moola, MoolaWeb.Endpoint,
   check_origin: false,
   watchers: []
 
+config :moola, Moola.GDAXSocket,
+  socket_url: "wss://ws-feed.gdax.com/",
+  ticker_period: 15.0,
+  product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
+
 # ## SSL Support
 #
 # In order to use HTTPS in development, a self-signed
