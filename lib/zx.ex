@@ -5,7 +5,7 @@ defmodule ZX do
   end
 
   def i(param, label) do
-    IO.puts(label)
+    IO.write("[#{label}] ")
     IO.inspect(param)
   end
 

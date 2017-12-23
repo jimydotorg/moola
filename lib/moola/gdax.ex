@@ -25,7 +25,7 @@ defmodule Moola.GDAX do
     |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(D.mult(fill.size, fill.price)) end)
   end
 
-  def buy_fixed_dollars(symbol, dollar_amount) do
+  def buy_fixed_dollars(symbol, dollar_amount, existing_order \\ nil) do
     with info when is_map(info) <- GDAXState.get(symbol),
       now <- GDAXState.get(:time) |> Map.get(:now),
       ticker_price <- info.price,
@@ -36,9 +36,22 @@ defmodule Moola.GDAX do
       size = D.div(D.new(dollar_amount), my_bid_price),
       price_time <- info.order_time,
       elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
-      true <- elapsed < 5 do
+      true <- elapsed < 2 do
 
-      create_buy_order(symbol, my_bid_price, size)
+      cond do
+        existing_order == nil -> 
+          create_buy_order(symbol, my_bid_price, size)
+
+        equal_prices?(existing_order.price, my_bid_price) && equal_sizes?(existing_order.size, size) ->
+          {:ok, existing_order} 
+
+        true -> 
+          case cancel_order(existing_order) do
+            {:ok, _} -> create_buy_order(symbol, my_bid_price, size)
+            err -> err
+          end
+      end
+
     else
       err -> {:error, err} |> ZX.i
     end
@@ -60,16 +73,6 @@ defmodule Moola.GDAX do
       save_order_info(result) 
       |> ZX.i
     end
-  end
-
-  defp format_usd_price(number) do
-    D.set_context(%D.Context{D.get_context | precision: 10})
-    D.new(number) |> D.round(2) |> D.to_string(:normal)
-  end
-
-  defp format_order_size(number) do
-    D.set_context(%D.Context{D.get_context | precision: 4, rounding: :ceiling})
-    D.new(number) |> D.reduce |> D.to_string(:normal)
   end
 
   def cancel_order(%Order{} = order) do
@@ -102,6 +105,10 @@ defmodule Moola.GDAX do
     end
   end
 
+  """
+  Private functions
+  """
+
   defp save_order_info(%{"id" => gdax_id} = info) do
     case Repo.get_by(Order, gdax_id: gdax_id) do
       %Order{} = order -> 
@@ -126,6 +133,25 @@ defmodule Moola.GDAX do
         |> Fill.changeset(info) 
         |> Repo.insert
     end
+  end
+
+  defp format_usd_price(number) do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+    D.new(number) |> D.round(2) |> D.to_string(:normal)
+  end
+
+  defp format_order_size(number) do
+    D.set_context(%D.Context{D.get_context | precision: 4, rounding: :ceiling})
+    D.new(number) |> D.reduce |> D.to_string(:normal)
+  end
+
+  defp equal_prices?(p1, p2) do
+    D.equal?(D.round(p1,2), D.round(p2,2))
+  end
+
+  defp equal_sizes?(s1, s2) do
+    D.set_context(%D.Context{D.get_context | precision: 3, rounding: :ceiling})
+    D.equal?(D.reduce(s1), D.reduce(s2))
   end
 
 end

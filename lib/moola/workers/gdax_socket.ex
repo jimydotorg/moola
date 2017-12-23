@@ -68,6 +68,17 @@ defmodule Moola.GDAXSocket do
     {:ok, state}
   end
 
+  def handle_info({:ssl_closed, _} = msg, state) do
+    ZX.i(msg, "handle_info")
+    exit(:ssl_closed)
+    {:stop, :ssl_closed, state}
+  end
+
+  def handle_disconnect(connection_status_map, state) do
+    ZX.i(connection_status_map, "handle_disconnect")
+    {:ok, state}
+  end
+
   def handle_frame({_, msg}, state) do
     payload = msg |> Poison.decode!
     case process_payload(payload["type"], payload, state) do
@@ -86,7 +97,7 @@ defmodule Moola.GDAXSocket do
       Moola.GDAXState.put(symbol, %{price: price, match_time: now})      
 
       period = ticker_period()
-      
+
       case elapsed_time(state, symbol, now) do
         nil -> 
           state
