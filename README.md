@@ -40,15 +40,17 @@ One very important thing to keep in mind is that your bid should be based on the
 
 "ZX.i" is my stupid function for printing debug statements, and is littered everywhere in the code. It's quicker than typing "IO.inspect"
 
-## Known problems
+## Known issues
 
 If the websocket connection to GDAX dies, GDAXSocket does not automatically restart.
 
+Autobuys works only when buying USD, so it can't be used for ETH-BTC. This is due mainly to the precision/formatting of bid prices, so that needs to be changed in order to support ETH-BTC exchange.
+
 There is a bunch of unused code to support non-yet-existent frontend clients. (User, ClientToken, UserToken, etc) Probably best to ignore it.
 
-## Unknown problems
+## Unknown issues
 
-I don't know, but there are probably many.
+Unknown, but there are probably many.
 
 ## Dependencies
 
