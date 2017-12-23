@@ -30,6 +30,13 @@ In the example above, the DollarBuyer will attempt to purchase $25 USD of ETH, $
 
 Moola.GDAXSocket listens to the GDAX websocket feed to provide real-time updates. Data points are logged every 15 seconds to the local database. Real-time updates are written to GDAXState, which provides quotes to the DollarBuyer.
 
+The websocket subscriptions and url can be changed in `config/(dev|prod).exs`
+
+    config :moola, Moola.GDAXSocket,
+      socket_url: "wss://ws-feed.gdax.com/",
+      ticker_period: 15.0,
+      product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
+
 ## Notes
 
 Numbers are often handled as Decimals (sometimes aliased as "D"), which results in greater accuracy, but worse code readability. See: https://hexdocs.pm/decimal/readme.html
