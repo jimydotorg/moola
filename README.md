@@ -58,10 +58,11 @@ Unknown, but there are probably many.
   * Coinbase API adapter: https://github.com/seymores/coinbase_ex
   * A local database server.
 
-## Disclaimer
-
-Use this at your own risk. This project is unmaintained and subject to massive change at any time.
-
 ## Learn more
 
   * GDAX API docs: https://docs.gdax.com
+  * Coinbase API docs: https://developers.coinbase.com
+
+## Disclaimer
+
+Use this at your own risk. This project is unmaintained and subject to massive change at any time.
