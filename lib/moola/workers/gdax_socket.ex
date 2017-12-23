@@ -13,9 +13,7 @@ defmodule Moola.GDAXSocket do
   alias Moola.Repo
   alias Moola.Ticker
 
-  # @product_ids ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
-  @product_ids ["ETH-USD", "BTC-USD", "BCH-USD"]
-
+  @product_ids ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
   @gdax_socket "wss://ws-feed.gdax.com/"
   @ticker_period 15.0
      
@@ -35,7 +33,6 @@ defmodule Moola.GDAXSocket do
     case WebSockex.start(url, __MODULE__, init_state) do
       {:ok, pid} = result -> 
         pid |> Process.register(Moola.GDAXSocket)
-        Moola.GDAXState.start_link
         WebSockex.send_frame(pid, {:text, subscriptions()})
         result
       err -> err
@@ -47,6 +44,7 @@ defmodule Moola.GDAXSocket do
       type: "subscribe",
       product_ids: @product_ids,
       channels: ["heartbeat", 
+                  %{name: "ticker", product_ids: @product_ids},
                   %{name: "matches", product_ids: @product_ids},
                   %{name: "level2", product_ids: @product_ids},
                 ]
@@ -85,7 +83,7 @@ defmodule Moola.GDAXSocket do
       {:ok, price} <- msg |> Map.get("price") |> D.parse,
       {:ok, size} <-  msg |> Map.get("size") |> D.parse do
 
-      Moola.GDAXState.put(symbol, %{price: price, time: now})      
+      Moola.GDAXState.put(symbol, %{price: price, match_time: now})      
 
       case elapsed_time(state, symbol, now) do
         nil -> 
@@ -118,7 +116,15 @@ defmodule Moola.GDAXSocket do
     end
   end
 
-  def process_payload("ticker", _, _), do: nil
+  def process_payload("ticker", msg, state) do
+    symbol = msg["product_id"] |> symbolize
+    lowest_ask = msg["best_ask"] |> D.new 
+    highest_bid = msg["best_bid"] |> D.new
+    Moola.GDAXState.put(symbol, %{lowest_ask: lowest_ask, highest_bid: highest_bid})      
+    state
+  end
+
+  def process_payload("subscriptions", _, _), do: nil
 
   def process_payload("heartbeat", msg, state) do
     {:ok, now, _} = msg |> Map.get("time") |> DateTime.from_iso8601
@@ -139,6 +145,7 @@ defmodule Moola.GDAXSocket do
 
   def process_payload("l2update", msg, state) do
     symbol = msg["product_id"] |> symbolize
+    {:ok, now, _} = msg["time"] |> DateTime.from_iso8601
 
     state = msg["changes"]
     |> Enum.reduce(
@@ -151,7 +158,11 @@ defmodule Moola.GDAXSocket do
           end
         end)
 
-    Moola.GDAXState.put(symbol, %{lowest_ask: lowest_ask(state, symbol), highest_bid: highest_bid(state, symbol)})      
+    # Shitty hack:
+    case :rand.uniform(25) do
+      1 -> Moola.GDAXState.put(symbol, %{lowest_ask: lowest_ask(state, symbol), highest_bid: highest_bid(state, symbol), order_time: now})      
+      _ -> nil
+    end
 
     state
   end
