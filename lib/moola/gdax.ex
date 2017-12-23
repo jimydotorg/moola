@@ -29,38 +29,36 @@ defmodule Moola.GDAX do
     with info when is_map(info) <- GDAXState.get(symbol),
       now <- GDAXState.get(:time) |> Map.get(:now),
       ticker_price <- info.price,
-      price <- D.min(info.highest_bid, info.lowest_ask),
-      price_time <- info.time,
+      spread <- D.sub(info.lowest_ask, info.highest_bid),
+      true <- D.to_float(spread) < 10.0,
+      mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
+      my_bid_price <- D.sub(mid_price, D.new(0.01)),
+      size = D.div(D.new(dollar_amount), my_bid_price),
+      price_time <- info.order_time,
       elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
       true <- elapsed < 5 do
-        my_bid_price = D.sub(price, D.new(0.01))
-        size = D.div(D.new(dollar_amount), my_bid_price)
 
-        ZX.i({ticker_price, my_bid_price, info.highest_bid, info.lowest_ask}, symbol)
-        create_buy_order(symbol, my_bid_price, size)
-
+      create_buy_order(symbol, my_bid_price, size)
     else
-      _ -> {:error, "Been a while since the last transaction. Is GDAXSocket running?"} |> ZX.i
+      err -> {:error, err} |> ZX.i
     end
   end
 
   def create_buy_order(symbol, price, size) do
-    d_price = format_usd_price(price)
-    d_size = format_order_size(size)
-    {d_price, d_size} |> ZX.i("buy #{symbol}")
-
     with {:ok, result} <-  %{
                               type: "limit",
                               side: "buy",
                               product_id: upcase(symbol),
-                              price: d_price,
-                              size: d_size,
+                              price: format_usd_price(price),
+                              size: format_order_size(size),
                               time_in_force: "GTT",
                               cancel_after: "hour",
                               post_only: true
                             }
+                            |> ZX.i
                             |> ExGdax.create_order do
-      save_order_info(result)
+      save_order_info(result) 
+      |> ZX.i
     end
   end
 

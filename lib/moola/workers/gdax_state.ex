@@ -3,39 +3,32 @@ defmodule Moola.GDAXState do
   import Moola.Util
 
   def start_link do
-    {:ok, pid} = Task.start_link(fn -> loop(%{}) end) |> ZX.i("starting GDAXState:")
-    pid |> Process.register(Moola.GDAXState)
+    with {:ok, pid} <- Task.start_link(fn -> loop(%{}) end) do
+      pid |> Process.register(Moola.GDAXState)
+      {:ok, pid}
+    end
   end
 
   defp loop(map) do
     receive do
       {:get, symbol, caller} -> 
-        symbol = symbol |> downcase |> atomize
+        symbol = symbol |> symbolize
         send(caller, Map.get(map, symbol))
         loop(map)
       {:put, symbol, values} ->
-        symbol = symbol |> downcase |> atomize
-        new_values = Map.get(map, symbol, %{}) |> Map.merge(values)
-        loop(Map.put(map, symbol, new_values)) 
+        symbol = symbol |> symbolize
+        new_values = Map.get(map, symbol, %{}) |> Map.merge(values) 
+        new_map = Map.put(map, symbol, new_values)
+        loop(new_map) 
     end
   end
 
   def put(symbol, state) do
-    case Process.whereis(Moola.GDAXState) do
-      nil -> start_link
-      _ -> nil
-    end
-
     send(Moola.GDAXState, {:put, symbol, state})
   end
 
   def get(symbol) do
-    case Process.whereis(Moola.GDAXState) do
-      nil -> start_link
-      _ -> nil
-    end
-
-    send(Moola.GDAXState, {:get, symbol, self})
+    send(Moola.GDAXState, {:get, symbol, self()})
     receive do
       value -> value
     end
