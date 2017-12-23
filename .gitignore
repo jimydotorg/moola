@@ -4,7 +4,13 @@
 erl_crash.dump
 *.ez
 *.secret.exs
+.env
+
+# edeliver:
+.deliver/releases/
+
+# syncthing:
 .stversions
 .stfolder
-.env
-.deliver/releases/
+.stignore
+.stglobalignore
