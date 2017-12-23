@@ -56,9 +56,13 @@ defimpl Poison.Encoder, for: Moola.User do
     end
 
     result = for_all(user, options)
-    if options[:is_me] do
-      result = Map.merge(result, for_self(user, options))
+
+    result = if options[:is_me] do
+      Map.merge(result, for_self(user, options))
+    else
+      result
     end
+
     Poison.Encoder.encode(result, options)
   end
 
