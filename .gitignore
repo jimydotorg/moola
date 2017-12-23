@@ -7,7 +7,7 @@ erl_crash.dump
 .env
 
 # edeliver:
-.deliver/releases/
+.deliver
 
 # syncthing:
 .stversions
