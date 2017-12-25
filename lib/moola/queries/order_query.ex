@@ -22,8 +22,14 @@ defmodule Moola.OrderQuery do
       _ -> query
     end
 
+    query = case options[:side] do
+      nil -> query
+      side -> from item in query, where: item.side == ^side
+    end
+
     query = case options[:status] do
       nil -> query
+      statuses when is_list(statuses) -> from item in query, where: item.status in ^statuses
       status -> from item in query, where: item.status == ^status
     end
 

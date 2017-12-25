@@ -12,6 +12,7 @@ defmodule Moola.GDAXSocket do
   alias Decimal, as: D
   alias Moola.Repo
   alias Moola.Ticker
+  alias Moola.GDAXState
 
   def socket_url, do: Application.get_env(:moola, Moola.GDAXSocket)[:socket_url]
   def ticker_period, do: Application.get_env(:moola, Moola.GDAXSocket)[:ticker_period]
@@ -26,6 +27,7 @@ defmodule Moola.GDAXSocket do
       min_prices: %{},
       asks: %{},
       bids: %{},
+      latency_log: DateTime.utc_now
     }
 
     D.set_context(%D.Context{D.get_context | precision: 2})
@@ -94,7 +96,7 @@ defmodule Moola.GDAXSocket do
       {:ok, price} <- msg |> Map.get("price") |> D.parse,
       {:ok, size} <-  msg |> Map.get("size") |> D.parse do
 
-      Moola.GDAXState.put(symbol, %{price: price, match_time: now})      
+      GDAXState.put(symbol, %{price: price, match_time: now})      
 
       period = ticker_period()
 
@@ -122,7 +124,6 @@ defmodule Moola.GDAXSocket do
           |> reset_prices
           |> reset_time(symbol, now)
           |> reset_volume(symbol)
-
       end
     else
       _ -> nil
@@ -133,7 +134,7 @@ defmodule Moola.GDAXSocket do
     symbol = msg["product_id"] |> symbolize
     lowest_ask = msg["best_ask"] |> D.new 
     highest_bid = msg["best_bid"] |> D.new
-    Moola.GDAXState.put(symbol, %{lowest_ask: lowest_ask, highest_bid: highest_bid})      
+    # Moola.GDAXState.put(symbol, %{lowest_ask: lowest_ask, highest_bid: highest_bid})      
     state
   end
 
@@ -141,7 +142,20 @@ defmodule Moola.GDAXSocket do
 
   def process_payload("heartbeat", msg, state) do
     {:ok, now, _} = msg |> Map.get("time") |> DateTime.from_iso8601
-    Moola.GDAXState.put(:time, %{now: now})
+    GDAXState.put(:time, %{now: now})
+
+    # Log API latency every 30 seconds
+    state = with last_log <- state.latency_log,
+      elapsed <- DateTime.diff(DateTime.utc_now, last_log, :milliseconds) do
+      cond do
+        elapsed > 30000 -> 
+          Task.start(fn -> Moola.GDAX.log_latency() end)
+          %{state | latency_log: DateTime.utc_now}
+        true -> 
+          state
+      end
+    end   
+
     state
   end
 
@@ -172,8 +186,8 @@ defmodule Moola.GDAXSocket do
         end)
 
     # Shitty hack:
-    case :rand.uniform(25) do
-      1 -> Moola.GDAXState.put(symbol, %{lowest_ask: lowest_ask(state, symbol), highest_bid: highest_bid(state, symbol), order_time: now})      
+    case :rand.uniform(50) do
+      1 -> Moola.GDAXState.put(symbol, %{lowest_ask: lowest_ask(state, symbol), highest_bid: highest_bid(state, symbol), order_time: now})     
       _ -> nil
     end
 

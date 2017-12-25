@@ -7,6 +7,7 @@ defmodule Moola.GDAX do
   alias Moola.Order
   alias Moola.FillQuery
   alias Moola.OrderQuery
+  alias Moola.OrderLatency
 
   def dollars_balance do
     with {:ok, info} <- ExGdax.get_position,
@@ -25,10 +26,11 @@ defmodule Moola.GDAX do
     |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(D.mult(fill.size, fill.price)) end)
   end
 
-  def buy_fixed_dollars(symbol, dollar_amount, existing_order \\ nil) do
+  def buy_fixed_dollars(symbol, dollar_amount) do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+
     with info when is_map(info) <- GDAXState.get(symbol),
       now <- GDAXState.get(:time) |> Map.get(:now),
-      ticker_price <- info.price,
       spread <- D.sub(info.lowest_ask, info.highest_bid),
       true <- D.to_float(spread) < 10.0,
       mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
@@ -36,7 +38,8 @@ defmodule Moola.GDAX do
       size = D.div(D.new(dollar_amount), my_bid_price),
       price_time <- info.order_time,
       elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
-      true <- elapsed < 2 do
+      true <- elapsed < 2,
+      existing_order <- OrderQuery.query_orders(symbol: symbol, side: "buy", status: ["open", "pending"]) |> Enum.at(0) do
 
       cond do
         existing_order == nil -> 
@@ -57,12 +60,56 @@ defmodule Moola.GDAX do
     end
   end
 
-  def create_buy_order(symbol, price, size) do
+  def sell_fixed_dollars(symbol, dollar_amount) do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+
+    with info when is_map(info) <- GDAXState.get(symbol),
+      now <- GDAXState.get(:time) |> Map.get(:now),
+      spread <- D.sub(info.lowest_ask, info.highest_bid),
+      true <- D.to_float(spread) < 10.0,
+      highest <- info.highest_bid |> ZX.i("high bid"),
+      lowest <- info.lowest_ask |> ZX.i("low ask"),
+      mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
+      my_ask_price <- D.add(mid_price, D.new(0.01)) |> ZX.i("my bid"),
+      size = D.div(D.new(dollar_amount), my_ask_price),
+      price_time <- info.order_time,
+      elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0 |> ZX.i("delta"),
+      true <- elapsed < 2,
+      existing_order <- OrderQuery.query_orders(symbol: symbol, side: "sell", status: ["open", "pending"]) |> Enum.at(0) do
+
+      cond do
+        existing_order == nil -> 
+          create_sell_order(symbol, my_ask_price, size)
+
+        equal_prices?(existing_order.price, my_ask_price) && equal_sizes?(existing_order.size, size) ->
+          {:ok, existing_order} 
+
+        true -> 
+          case cancel_order(existing_order) do
+            {:ok, _} -> create_sell_order(symbol, my_ask_price, size)
+            err -> err
+          end
+      end
+
+    else
+      err -> {:error, err} |> ZX.i
+    end
+  end
+
+  def create_buy_order(symbol, price, size), do: create_order(symbol, price, size, "buy")
+  def create_sell_order(symbol, price, size), do: create_order(symbol, price, size, "sell")
+
+  def create_order(symbol, price, size, side) do
+    price_rounding = case side do
+      "buy" -> :ceiling
+      "sell" -> :floor
+    end
+
     with {:ok, result} <-  %{
                               type: "limit",
-                              side: "buy",
+                              side: side,
                               product_id: upcase(symbol),
-                              price: format_usd_price(price),
+                              price: format_usd_price(price, price_rounding),
                               size: format_order_size(size),
                               time_in_force: "GTT",
                               cancel_after: "hour",
@@ -76,8 +123,11 @@ defmodule Moola.GDAX do
   end
 
   def cancel_order(%Order{} = order) do
-    with {:ok, _} <- ExGdax.cancel_order(order.gdax_id) do
-      Repo.delete(order)
+    case ExGdax.cancel_order(order.gdax_id) do
+      {:ok, _} -> Repo.delete(order)
+      {:error, _, 400} -> Repo.delete(order)  # Order already done
+      {:error, _, 404} -> Repo.delete(order)  # Order not found
+      err -> err
     end
   end
 
@@ -89,6 +139,7 @@ defmodule Moola.GDAX do
 
   def retrieve_orders(symbol) do
     with {:ok, orders} <- ExGdax.list_orders(product_id: upcase(symbol)) do
+      Repo.delete_all(Order)
       orders
       |> Enum.each(fn(x) -> save_order_info(x) end)
     else
@@ -103,6 +154,63 @@ defmodule Moola.GDAX do
     else
       _ -> :error
     end
+  end
+
+  @doc """
+  Test the GDAX API latency by creating a crap order that will most likely not get filled and
+  then immediately deleting it
+  """
+  def measure_latency do
+    with symbol <- "btc-usd",
+      dollar_amount <- 13.37,
+      info when is_map(info) <- GDAXState.get(symbol),
+      now <- GDAXState.get(:time) |> Map.get(:now),
+      low_bid_price <- D.div(info.highest_bid, D.new(8)),
+      size = D.div(D.new(dollar_amount), low_bid_price),
+      price_time <- info.order_time,
+      elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
+      true <- elapsed < 2 do
+
+      time1 = DateTime.utc_now
+      case create_fake_order(symbol, low_bid_price, size) do
+        {:ok, %{"id" => id} = order} ->
+          time2 = DateTime.utc_now
+          case ExGdax.cancel_order(id) do
+            {:ok, _} -> 
+              time3 = DateTime.utc_now
+              latency = DateTime.diff(time2, time1, :milliseconds) + DateTime.diff(time3, time2, :milliseconds)
+              {:ok, latency}
+
+            {:error, _, _} = err -> err
+            _ -> {:error, "fail"} 
+          end
+        {:error, _, _} = err -> err
+        _ -> {:error, "FAIL"}
+      end
+    end
+  end
+
+  def log_latency do
+    with now <- DateTime.utc_now,
+      {:ok, latency} <- measure_latency() do
+      %OrderLatency{}
+      |> OrderLatency.changeset(%{milliseconds: latency, timestamp: now})
+      |> Repo.insert
+    end
+  end
+
+  defp create_fake_order(symbol, price, size) do
+    %{
+      type: "limit",
+      side: "buy",
+      product_id: upcase(symbol),
+      price: format_usd_price(price),
+      size: format_order_size(size),
+      time_in_force: "GTT",
+      cancel_after: "hour",
+      post_only: true
+    }
+    |> ExGdax.create_order
   end
 
   """
@@ -135,9 +243,9 @@ defmodule Moola.GDAX do
     end
   end
 
-  defp format_usd_price(number) do
+  defp format_usd_price(number, rounding \\ :half_up) do
     D.set_context(%D.Context{D.get_context | precision: 10})
-    D.new(number) |> D.round(2) |> D.to_string(:normal)
+    D.new(number) |> D.round(2, rounding) |> D.to_string(:normal)
   end
 
   defp format_order_size(number) do

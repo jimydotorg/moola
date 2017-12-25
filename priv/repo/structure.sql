@@ -110,6 +110,36 @@ ALTER SEQUENCE gdax_fills_id_seq OWNED BY gdax_fills.id;
 
 
 --
+-- Name: gdax_order_latency_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE gdax_order_latency_logs (
+    id bigint NOT NULL,
+    milliseconds integer,
+    "timestamp" timestamp without time zone
+);
+
+
+--
+-- Name: gdax_order_latency_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE gdax_order_latency_logs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: gdax_order_latency_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE gdax_order_latency_logs_id_seq OWNED BY gdax_order_latency_logs.id;
+
+
+--
 -- Name: gdax_orders; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -351,6 +381,13 @@ ALTER TABLE ONLY gdax_fills ALTER COLUMN id SET DEFAULT nextval('gdax_fills_id_s
 
 
 --
+-- Name: gdax_order_latency_logs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY gdax_order_latency_logs ALTER COLUMN id SET DEFAULT nextval('gdax_order_latency_logs_id_seq'::regclass);
+
+
+--
 -- Name: gdax_orders id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -406,6 +443,14 @@ ALTER TABLE ONLY client_tokens
 
 ALTER TABLE ONLY gdax_fills
     ADD CONSTRAINT gdax_fills_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: gdax_order_latency_logs gdax_order_latency_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY gdax_order_latency_logs
+    ADD CONSTRAINT gdax_order_latency_logs_pkey PRIMARY KEY (id);
 
 
 --
@@ -483,6 +528,13 @@ CREATE INDEX gdax_fills_symbol_index ON gdax_fills USING btree (symbol);
 --
 
 CREATE UNIQUE INDEX gdax_fills_trade_id_symbol_index ON gdax_fills USING btree (trade_id, symbol);
+
+
+--
+-- Name: gdax_order_latency_logs_timestamp_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX gdax_order_latency_logs_timestamp_index ON gdax_order_latency_logs USING btree ("timestamp");
 
 
 --
@@ -598,5 +650,5 @@ ALTER TABLE ONLY user_tokens
 -- PostgreSQL database dump complete
 --
 
-INSERT INTO "schema_migrations" (version) VALUES (20171216034812), (20171218032627), (20171218032634), (20171218032638), (20171218032639), (20171220044208), (20171221043239);
+INSERT INTO "schema_migrations" (version) VALUES (20171216034812), (20171218032627), (20171218032634), (20171218032638), (20171218032639), (20171220044208), (20171221043239), (20171224200517);
 

@@ -76,7 +76,7 @@ defmodule Moola.DollarBuyer do
               with :ok <- GDAX.retrieve_orders(symbol),
                 :ok <- GDAX.retrieve_fills(symbol) do
 
-                  print_current_values(symbol)
+                  # print_current_values(symbol)
 
                   case spend_allowance(symbol, limit) do
                     {:done, _} -> acc
@@ -116,11 +116,9 @@ defmodule Moola.DollarBuyer do
       amount when amount < limit -> 
         # DEBUG: Print current data
         GDAXState.get(symbol) |> ZX.i(symbol)
-
-        # Do we have an outstanding order?
-        existing_order = OrderQuery.query_orders(symbol: symbol, age: buy_period(), status: "open") |> Enum.at(0)
+        
         buy_amount = limit - amount
-        case GDAX.buy_fixed_dollars(symbol, buy_amount, existing_order) do
+        case GDAX.buy_fixed_dollars(symbol, buy_amount) do
           {:ok, order} -> {:pending, buy_amount}
           err -> err
         end
