@@ -5,6 +5,7 @@ erl_crash.dump
 *.ez
 *.secret.exs
 .env
+.envrc
 
 # edeliver:
 .deliver

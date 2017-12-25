@@ -76,7 +76,7 @@ Unknown, but there are probably many.
 ## Learn more
 
   * GDAX API docs: https://docs.gdax.com
-  * Coinbase API docs: https://developers.coinbase.com
+  * Coinbase API docs: https://developers.coinbase.com/api/v2
 
 ## Disclaimer
 

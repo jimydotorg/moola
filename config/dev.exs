@@ -18,6 +18,9 @@ config :moola, Moola.GDAXSocket,
   ticker_period: 15.0,
   product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
 
+config :moola, Moola.CoinbaseWatcher,
+  product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "BCH-USD"]
+
 # ## SSL Support
 #
 # In order to use HTTPS in development, a self-signed

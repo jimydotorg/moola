@@ -25,6 +25,9 @@ config :moola, Moola.GDAXSocket,
   ticker_period: 15.0
   product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
 
+config :moola, Moola.CoinbaseWatcher,
+  product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "BCH-USD"]
+
 # Do not print debug messages in production
 config :logger, level: :info
 

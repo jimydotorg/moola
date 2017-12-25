@@ -16,6 +16,7 @@ defmodule Moola.Application do
       # Start your own worker by calling: Moola.Worker.start_link(arg1, arg2, arg3)
       # worker(Moola.Worker, [arg1, arg2, arg3]),
 
+      worker(Moola.CoinbaseWatcher, []),
       worker(Moola.GDAXState, []),
       worker(Moola.GDAXSocket, []),
       worker(Moola.DollarBuyer, []),

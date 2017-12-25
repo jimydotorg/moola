@@ -71,6 +71,43 @@ ALTER SEQUENCE client_tokens_id_seq OWNED BY client_tokens.id;
 
 
 --
+-- Name: coinbase_ticks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE coinbase_ticks (
+    id bigint NOT NULL,
+    symbol integer,
+    buy_price numeric,
+    spot_price numeric,
+    sell_price numeric,
+    latency integer,
+    hour integer,
+    minute integer,
+    day_of_week integer,
+    "timestamp" timestamp without time zone
+);
+
+
+--
+-- Name: coinbase_ticks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE coinbase_ticks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: coinbase_ticks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE coinbase_ticks_id_seq OWNED BY coinbase_ticks.id;
+
+
+--
 -- Name: gdax_fills; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -374,6 +411,13 @@ ALTER TABLE ONLY client_tokens ALTER COLUMN id SET DEFAULT nextval('client_token
 
 
 --
+-- Name: coinbase_ticks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY coinbase_ticks ALTER COLUMN id SET DEFAULT nextval('coinbase_ticks_id_seq'::regclass);
+
+
+--
 -- Name: gdax_fills id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -435,6 +479,14 @@ ALTER TABLE ONLY users ALTER COLUMN id SET DEFAULT nextval('users_id_seq'::regcl
 
 ALTER TABLE ONLY client_tokens
     ADD CONSTRAINT client_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: coinbase_ticks coinbase_ticks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY coinbase_ticks
+    ADD CONSTRAINT coinbase_ticks_pkey PRIMARY KEY (id);
 
 
 --
@@ -650,5 +702,5 @@ ALTER TABLE ONLY user_tokens
 -- PostgreSQL database dump complete
 --
 
-INSERT INTO "schema_migrations" (version) VALUES (20171216034812), (20171218032627), (20171218032634), (20171218032638), (20171218032639), (20171220044208), (20171221043239), (20171224200517);
+INSERT INTO "schema_migrations" (version) VALUES (20171216034812), (20171218032627), (20171218032634), (20171218032638), (20171218032639), (20171220044208), (20171221043239), (20171224200517), (20171225041220);
 

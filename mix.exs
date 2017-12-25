@@ -55,7 +55,7 @@ defmodule Moola.Mixfile do
       {:ex_twilio, "~> 0.5.0"},
 
       {:ex_gdax, "~> 0.1"},
-      {:coinbase_ex, github: "seymores/coinbase_ex"},
+      {:coinbase_ex, github: "jimydotorg/coinbase_ex"},
     ]
   end
 
