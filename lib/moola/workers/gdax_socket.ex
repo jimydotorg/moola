@@ -72,7 +72,7 @@ defmodule Moola.GDAXSocket do
 
   def handle_info({:ssl_closed, _} = msg, state) do
     ZX.i(msg, "handle_info")
-    exit(:ssl_closed)
+    Process.exit(self(), :kill)
     {:stop, :ssl_closed, state}
   end
 
