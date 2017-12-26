@@ -26,15 +26,16 @@ defmodule Moola.GDAX do
     |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(D.mult(fill.size, fill.price)) end)
   end
 
-  def buy_fixed_dollars(symbol, dollar_amount) do
+  def buy_fixed_dollars(symbol, dollar_amount, max_price \\ nil) do
     D.set_context(%D.Context{D.get_context | precision: 10})
 
     with info when is_map(info) <- GDAXState.get(symbol),
       now <- GDAXState.get(:time) |> Map.get(:now),
       spread <- D.sub(info.lowest_ask, info.highest_bid),
       true <- D.to_float(spread) < 10.0,
+      max_price <- (max_price || 100000000) |> D.new,
       mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
-      my_bid_price <- D.sub(mid_price, D.new(0.01)),
+      my_bid_price <- D.min(max_price, D.sub(mid_price, D.new(0.01))),
       size = D.div(D.new(dollar_amount), my_bid_price),
       price_time <- info.order_time,
       elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
@@ -60,20 +61,19 @@ defmodule Moola.GDAX do
     end
   end
 
-  def sell_fixed_dollars(symbol, dollar_amount) do
+  def sell_fixed_dollars(symbol, dollar_amount, min_price \\ nil) do
     D.set_context(%D.Context{D.get_context | precision: 10})
 
     with info when is_map(info) <- GDAXState.get(symbol),
       now <- GDAXState.get(:time) |> Map.get(:now),
       spread <- D.sub(info.lowest_ask, info.highest_bid),
       true <- D.to_float(spread) < 10.0,
-      highest <- info.highest_bid |> ZX.i("high bid"),
-      lowest <- info.lowest_ask |> ZX.i("low ask"),
+      min_price <- (min_price || 0) |> D.new,
       mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
-      my_ask_price <- D.add(mid_price, D.new(0.01)) |> ZX.i("my bid"),
+      my_ask_price <- D.max(min_price, D.add(mid_price, D.new(0.01))),
       size = D.div(D.new(dollar_amount), my_ask_price),
       price_time <- info.order_time,
-      elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0 |> ZX.i("delta"),
+      elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
       true <- elapsed < 2,
       existing_order <- OrderQuery.query_orders(symbol: symbol, side: "sell", status: ["open", "pending"]) |> Enum.at(0) do
 
