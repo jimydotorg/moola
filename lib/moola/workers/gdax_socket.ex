@@ -32,9 +32,9 @@ defmodule Moola.GDAXSocket do
 
     D.set_context(%D.Context{D.get_context | precision: 2})
 
-    case WebSockex.start(socket_url(), __MODULE__, init_state) do
+    case WebSockex.start_link(socket_url(), __MODULE__, init_state) do
       {:ok, pid} = result -> 
-        pid |> Process.register(Moola.GDAXSocket)
+        pid |> Process.register(Moola.GDAXSocket) |> ZX.i("Start GDAXSocket")
         WebSockex.send_frame(pid, {:text, subscriptions()})
         result
       err -> err
@@ -61,10 +61,6 @@ defmodule Moola.GDAXSocket do
     end
   end
 
-  def terminate(_, _) do
-    exit(:normal)
-  end
-
   def handle_connect(_conn, state) do
     IO.puts("Connected!")
     {:ok, state}
@@ -73,7 +69,7 @@ defmodule Moola.GDAXSocket do
   def handle_info({:ssl_closed, _} = msg, state) do
     ZX.i(msg, "handle_info")
     Process.exit(self(), :kill)
-    {:stop, :ssl_closed, state}
+    {:ok, state}
   end
 
   def handle_disconnect(connection_status_map, state) do
