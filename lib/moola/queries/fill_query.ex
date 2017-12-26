@@ -27,6 +27,11 @@ defmodule Moola.FillQuery do
       status -> from item in query, where: item.status == ^status
     end
 
+    query = case options[:side] do
+      nil -> query
+      side -> from item in query, where: item.side == ^side
+    end
+
     now = case options[:now] do
       nil -> DateTime.utc_now
       time -> time

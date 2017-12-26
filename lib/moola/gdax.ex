@@ -18,11 +18,13 @@ defmodule Moola.GDAX do
 
   def dollars_purchased(symbol, age) do
     D.set_context(%D.Context{D.get_context | precision: 10})
-    gdax_time = case GDAXState.get(:time) do
-      %{now: now} -> now
-      _ -> DateTime.utc_now
-    end
-    FillQuery.query_fills(symbol: symbol, now: gdax_time, age: age)
+    FillQuery.query_fills(side: "buy", symbol: symbol, now: current_time(), age: age)
+    |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(D.mult(fill.size, fill.price)) end)
+  end
+
+  def dollars_sold(symbol, age) do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+    FillQuery.query_fills(side: "sell", symbol: symbol, now: current_time(), age: age)
     |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(D.mult(fill.size, fill.price)) end)
   end
 
@@ -46,7 +48,7 @@ defmodule Moola.GDAX do
         existing_order == nil -> 
           create_buy_order(symbol, my_bid_price, size)
 
-        equal_prices?(existing_order.price, my_bid_price) && equal_sizes?(existing_order.size, size) ->
+        equal_prices?(existing_order.price, my_bid_price, :ceiling) && equal_sizes?(existing_order.size, size) ->
           {:ok, existing_order} 
 
         true -> 
@@ -81,7 +83,7 @@ defmodule Moola.GDAX do
         existing_order == nil -> 
           create_sell_order(symbol, my_ask_price, size)
 
-        equal_prices?(existing_order.price, my_ask_price) && equal_sizes?(existing_order.size, size) ->
+        equal_prices?(existing_order.price, my_ask_price, :floor) && equal_sizes?(existing_order.size, size) ->
           {:ok, existing_order} 
 
         true -> 
@@ -172,7 +174,19 @@ defmodule Moola.GDAX do
       true <- elapsed < 2 do
 
       time1 = DateTime.utc_now
-      case create_fake_order(symbol, low_bid_price, size) do
+
+      params = %{
+        type: "limit",
+        side: "buy",
+        product_id: upcase(symbol),
+        price: format_usd_price(low_bid_price),
+        size: format_order_size(size),
+        time_in_force: "GTT",
+        cancel_after: "hour",
+        post_only: true
+      }
+
+      case ExGdax.create_order(params) do
         {:ok, %{"id" => id} = order} ->
           time2 = DateTime.utc_now
           case ExGdax.cancel_order(id) do
@@ -199,23 +213,24 @@ defmodule Moola.GDAX do
     end
   end
 
-  defp create_fake_order(symbol, price, size) do
-    %{
-      type: "limit",
-      side: "buy",
-      product_id: upcase(symbol),
-      price: format_usd_price(price),
-      size: format_order_size(size),
-      time_in_force: "GTT",
-      cancel_after: "hour",
-      post_only: true
-    }
-    |> ExGdax.create_order
+  def eth_usd_btc do
+    with eth_info <- GDAXState.get("eth-usd"),
+      btc_info <- GDAXState.get("btc-usd"),
+      mid_price <- D.div(D.new(eth_info.price), D.new(btc_info.price)),
+      low_price <- D.div(D.new(eth_info.highest_bid), D.new(btc_info.lowest_ask)),
+      high_price <- D.div(D.new(eth_info.lowest_ask), D.new(btc_info.highest_bid)) do
+      {low_price, mid_price, high_price}
+    end
   end
 
-  """
-  Private functions
-  """
+  # Private functions
+
+  defp current_time do
+    case GDAXState.get(:time) do
+      %{now: now} -> now
+      _ -> DateTime.utc_now
+    end
+  end
 
   defp save_order_info(%{"id" => gdax_id} = info) do
     case Repo.get_by(Order, gdax_id: gdax_id) do
@@ -253,8 +268,9 @@ defmodule Moola.GDAX do
     D.new(number) |> D.reduce |> D.to_string(:normal)
   end
 
-  defp equal_prices?(p1, p2) do
-    D.equal?(D.round(p1,2), D.round(p2,2))
+  defp equal_prices?(p1, p2, rounding \\ :half_up) do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+    D.equal?(D.round(p1, 2, rounding), D.round(p2, 2, rounding))
   end
 
   defp equal_sizes?(s1, s2) do
