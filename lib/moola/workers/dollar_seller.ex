@@ -34,7 +34,7 @@ defmodule Moola.DollarSeller do
     cond do 
       true == get_config(:auto_start) -> 
         print_config()
-        Process.send_after(self(), :work, 3500)
+        Process.send_after(self(), :work, 8000) # Wait 8 seconds before starting..
       true == state[:manual_start] -> 
         print_config()
         Process.send_after(self(), :work, 1)
