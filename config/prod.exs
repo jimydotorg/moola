@@ -21,8 +21,8 @@ config :moola, MoolaWeb.Endpoint,
   code_reloader: false
 
 config :moola, Moola.GDAXSocket,
-  socket_url: "wss://ws-feed.gdax.com/"
-  ticker_period: 15.0
+  socket_url: "wss://ws-feed.gdax.com/",
+  ticker_period: 15.0,
   product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
 
 config :moola, Moola.CoinbaseWatcher,
