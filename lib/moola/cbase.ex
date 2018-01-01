@@ -14,7 +14,7 @@ defmodule Moola.CBase do
 
       total_latency = buy_latency + sell_latency + spot_latency
 
-      %CoinbaseTicker{}
+      result = %CoinbaseTicker{}
       |> CoinbaseTicker.changeset(%{symbol: symbol |> symbolize,
                                     buy_price: buy_price, 
                                     sell_price: sell_price, 
@@ -26,6 +26,13 @@ defmodule Moola.CBase do
                                     day_of_week: Date.day_of_week(time)
                                   })
       |> Repo.insert
+
+      # Broadcast to channels:
+      with {:ok, tick} <- result do
+        Moola.NotifyChannels.send_channel("ticker:coinbase", "update", %{cbaseTicker: [tick]})
+      end
+
+      result
     end     
   end
 

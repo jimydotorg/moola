@@ -1,7 +1,7 @@
 defmodule MoolaWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :moola
 
-  socket "/socket", MoolaWeb.UserSocket
+  socket "/socket", MoolaWeb.MainSocket
 
   # Serve at "/" the static files from "priv/static" directory.
   #
@@ -36,6 +36,8 @@ defmodule MoolaWeb.Endpoint do
     key: "_moola_key",
     signing_salt: "D2HCODVn"
 
+  plug Corsica, origins: ["https://moola.zxxy.xyz", "http://localhost:3000"]
+  
   plug MoolaWeb.Router
 
   @doc """

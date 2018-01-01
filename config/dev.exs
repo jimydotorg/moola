@@ -16,7 +16,7 @@ config :moola, MoolaWeb.Endpoint,
 config :moola, Moola.GDAXSocket,
   socket_url: "wss://ws-feed.gdax.com/",
   ticker_period: 15.0,
-  product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "ETH-BTC", "BCH-USD"]
+  product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "BCH-USD", "ETH-BTC"]
 
 config :moola, Moola.CoinbaseWatcher,
   product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "BCH-USD"]
@@ -39,7 +39,7 @@ config :moola, Moola.CoinbaseWatcher,
 
 # Do not include metadata nor timestamps in development logs
 # config :logger, :console, format: "[$level] $message\n"
-config :logger, :console, format: "[$level] $message\n", level: :info
+config :logger, :console, format: "[$level] $message\n" #, level: :info
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.

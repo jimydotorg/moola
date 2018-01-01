@@ -15,3 +15,19 @@ defmodule Moola.OrderLatency do
     |> validate_required([:timestamp, :milliseconds])
   end
 end
+
+defimpl Poison.Encoder, for: Moola.OrderLatency do
+  use Moola, :encoder
+  alias Decimal, as: D
+  alias Moola.OrderLatency
+
+  def encode(%OrderLatency{} = latency, options \\ []) do
+    %{
+      id: latency.id,
+      latency: latency.milliseconds,
+      timestamp: latency.timestamp
+    }
+    |> Poison.Encoder.encode(options)
+  end
+
+end

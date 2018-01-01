@@ -37,6 +37,7 @@ defmodule Moola do
       alias Moola.Repo
 
       import ZXUtil.IdHasher
+      import Moola.Transmute
       import Moola.Util
       import Moola.NotifyChannels
 

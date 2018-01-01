@@ -22,3 +22,23 @@ defmodule Moola.CoinbaseTicker do
     |> validate_required([:symbol, :buy_price, :spot_price, :sell_price, :latency, :hour, :minute, :day_of_week, :timestamp])
   end
 end
+
+defimpl Poison.Encoder, for: Moola.CoinbaseTicker do
+  use Moola, :encoder
+  alias Moola.CoinbaseTicker
+  alias Decimal, as: D
+
+  def encode(%CoinbaseTicker{} = tick, options \\ []) do
+    %{
+      id: tick.id,
+      symbol: tick.symbol,
+      buy_price: tick.buy_price |> D.to_float,
+      sell_price: tick.sell_price |> D.to_float,
+      spot_price: tick.spot_price |> D.to_float,
+      latency: tick.latency,
+      timestamp: tick.timestamp
+    }
+    |> Poison.Encoder.encode(options)
+  end
+
+end

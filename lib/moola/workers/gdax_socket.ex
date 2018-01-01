@@ -236,17 +236,24 @@ defmodule Moola.GDAXSocket do
       max_price: state |> Map.get(:max_prices) |> Map.get(symbol)
     }
 
-    %Ticker{}
+    result = %Ticker{}
     |> Ticker.changeset(attrs, message)
     |> Repo.insert
+
+    # Broadcast to channels:
+    with {:ok, tick} <- result do
+      Moola.NotifyChannels.send_channel("ticker:gdax", "update", %{gdaxTicker: [tick]})
+    end
+
+    result
   end
 
   defp update_prices(state, symbol, price) do
 
     x_price = Map.get(state, :max_prices) |> Map.get(symbol, D.new(0))
     n_price = Map.get(state, :min_prices) |> Map.get(symbol, D.new(100000000))
-    max_prices =  Map.get(state, :max_prices) |> Map.put(symbol, D.max(price, x_price))
-    min_prices =  Map.get(state, :min_prices) |> Map.put(symbol, D.min(price, n_price))
+    max_prices = Map.get(state, :max_prices) |> Map.put(symbol, D.max(price, x_price))
+    min_prices = Map.get(state, :min_prices) |> Map.put(symbol, D.min(price, n_price))
     prices = Map.get(state, :prices) |> Map.put(symbol, price)
     %{state | prices: prices, min_prices: min_prices, max_prices: max_prices}
   end

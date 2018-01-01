@@ -207,9 +207,15 @@ defmodule Moola.GDAX do
   def log_latency do
     with now <- DateTime.utc_now,
       {:ok, latency} <- measure_latency() do
-      %OrderLatency{}
+      result = %OrderLatency{}
       |> OrderLatency.changeset(%{milliseconds: latency, timestamp: now})
       |> Repo.insert
+
+      with {:ok, obj} <- result do
+        Moola.NotifyChannels.send_channel("latency:gdax", "update", %{gdaxLatency: [obj]})
+      end
+
+      result
     end
   end
 

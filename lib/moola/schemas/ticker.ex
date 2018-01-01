@@ -40,3 +40,22 @@ defmodule Moola.Ticker do
     |> validate_required([:symbol, :price, :volume, :hour, :minute, :day_of_week, :timestamp])
   end
 end
+
+defimpl Poison.Encoder, for: Moola.Ticker do
+  use Moola, :encoder
+  alias Decimal, as: D
+  alias Moola.Ticker
+
+  def encode(%Ticker{} = tick, options \\ []) do
+    %{
+      id: tick.id,
+      symbol: tick.symbol,
+      price: tick.price |> D.to_float,
+      volume: tick.volume |> D.to_float,
+      usdVolume: tick.usd_volume |> D.to_float,
+      timestamp: tick.timestamp
+    }
+    |> Poison.Encoder.encode(options)
+  end
+
+end

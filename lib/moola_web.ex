@@ -17,12 +17,36 @@ defmodule MoolaWeb do
   and import those modules here.
   """
 
+  def channel do
+    quote do
+      use Phoenix.Channel
+      alias Phoenix.Socket
+      alias Moola.User
+      alias Moola.Log
+      
+      import Moola.Transmute
+      import Moola.Util
+      import Moola.NotifyChannels
+      import MoolaWeb.Gettext
+      import MoolaWeb.RenderJson
+    end
+  end
+
   def controller do
     quote do
       use Phoenix.Controller, namespace: MoolaWeb
       import Plug.Conn
       import MoolaWeb.Router.Helpers
       import MoolaWeb.Gettext
+
+      import Moola.Transmute
+      import Moola.Util
+      import Moola.NotifyChannels
+      import MoolaWeb.Gettext
+      import MoolaWeb.RenderJson
+
+      alias Moola.Log
+      alias Moola.User
     end
   end
 

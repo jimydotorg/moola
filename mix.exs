@@ -36,17 +36,17 @@ defmodule Moola.Mixfile do
       {:postgrex, ">= 0.0.0"},
       {:ecto, "~> 2.1"},
       {:ecto_enum, "~> 1.0"},
-      {:decimal, "~> 1.0"},
 
       {:phoenix, "~> 1.3.0"},
       {:phoenix_pubsub, "~> 1.0"},
       {:phoenix_ecto, "~> 3.2"},
       {:gettext, "~> 0.11"},
-      {:cowboy, "~> 1.0"},
-      
+      {:cowboy, "~> 1.0"},      
+      {:corsica, "~> 1.0"},
       {:edeliver, "~> 1.4.3"},
       {:distillery, "~> 1.4"},
 
+      {:decimal, "~> 1.0"},
       {:websockex, "~> 0.4.0"},
       {:comeonin, "~> 4.0"},
       {:bcrypt_elixir, "~> 0.12.0"},
