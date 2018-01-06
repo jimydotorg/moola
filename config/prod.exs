@@ -15,7 +15,8 @@ use Mix.Config
 # which you typically run after static files are built.
 config :moola, MoolaWeb.Endpoint,
   load_from_system_env: false,
-  url: [host: "moola.zxxy.xyz", port: 8080],
+  url: [host: "moola-api.zxxy.xyz"],
+  http: [port: 8080],
   cache_static_manifest: "priv/static/cache_manifest.json",
   server: true,
   code_reloader: false
