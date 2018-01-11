@@ -35,6 +35,45 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
+-- Name: binance_ticks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE binance_ticks (
+    id bigint NOT NULL,
+    symbol integer,
+    price numeric,
+    max_price numeric,
+    min_price numeric,
+    volume numeric,
+    btc_volume numeric,
+    usd_volume numeric,
+    hour integer,
+    minute integer,
+    day_of_week integer,
+    "timestamp" timestamp without time zone
+);
+
+
+--
+-- Name: binance_ticks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE binance_ticks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: binance_ticks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE binance_ticks_id_seq OWNED BY binance_ticks.id;
+
+
+--
 -- Name: client_tokens; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -404,6 +443,13 @@ ALTER SEQUENCE users_id_seq OWNED BY users.id;
 
 
 --
+-- Name: binance_ticks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY binance_ticks ALTER COLUMN id SET DEFAULT nextval('binance_ticks_id_seq'::regclass);
+
+
+--
 -- Name: client_tokens id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -471,6 +517,14 @@ ALTER TABLE ONLY user_tokens ALTER COLUMN id SET DEFAULT nextval('user_tokens_id
 --
 
 ALTER TABLE ONLY users ALTER COLUMN id SET DEFAULT nextval('users_id_seq'::regclass);
+
+
+--
+-- Name: binance_ticks binance_ticks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY binance_ticks
+    ADD CONSTRAINT binance_ticks_pkey PRIMARY KEY (id);
 
 
 --
@@ -559,6 +613,13 @@ ALTER TABLE ONLY user_tokens
 
 ALTER TABLE ONLY users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: binance_ticks_symbol_timestamp_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX binance_ticks_symbol_timestamp_index ON binance_ticks USING btree (symbol, "timestamp");
 
 
 --
@@ -702,5 +763,5 @@ ALTER TABLE ONLY user_tokens
 -- PostgreSQL database dump complete
 --
 
-INSERT INTO "schema_migrations" (version) VALUES (20171216034812), (20171218032627), (20171218032634), (20171218032638), (20171218032639), (20171220044208), (20171221043239), (20171224200517), (20171225041220);
+INSERT INTO "schema_migrations" (version) VALUES (20171216034812), (20171218032627), (20171218032634), (20171218032638), (20171218032639), (20171220044208), (20171221043239), (20171224200517), (20171225041220), (20180111014414);
 

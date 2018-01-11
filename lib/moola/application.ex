@@ -17,10 +17,14 @@ defmodule Moola.Application do
       # worker(Moola.Worker, [arg1, arg2, arg3]),
 
       worker(Moola.CoinbaseWatcher, []),
+
       worker(Moola.GDAXState, []),
       worker(Moola.GDAXSocket, []),
       worker(Moola.DollarBuyer, []),
       worker(Moola.DollarSeller, []),
+
+      worker(Moola.BinanceState, []),
+      worker(Moola.BinanceSocket, []),
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

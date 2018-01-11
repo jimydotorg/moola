@@ -21,6 +21,11 @@ config :moola, Moola.GDAXSocket,
 config :moola, Moola.CoinbaseWatcher,
   product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "BCH-USD"]
 
+config :moola, Moola.BinanceSocket,
+  socket_url: "wss://stream.binance.com:9443",
+  ticker_period: 15.0,
+  product_ids: ["BTCUSDT", "ETHBTC"]
+
 # ## SSL Support
 #
 # In order to use HTTPS in development, a self-signed
