@@ -29,6 +29,11 @@ config :moola, Moola.GDAXSocket,
 config :moola, Moola.CoinbaseWatcher,
   product_ids: ["ETH-USD", "BTC-USD", "LTC-USD", "BCH-USD"]
 
+config :moola, Moola.BinanceSocket,
+  socket_url: "wss://stream.binance.com:9443",
+  ticker_period: 15.0,
+  product_ids: ["BTCUSDT", "ETHBTC"]
+
 # Do not print debug messages in production
 config :logger, level: :info
 
