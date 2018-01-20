@@ -54,8 +54,8 @@ defmodule Moola.DollarSeller do
   defp do_shit do
 
     with balance when is_float(balance) <- GDAX.dollars_balance,
-      true <- balance < get_config(:max_usd_balance, 0) do
-
+      true <- balance < get_config(:max_usd_balance, 0) 
+    do
       status = get_config(:sell_targets, [])
         |> Enum.reduce(
             :done, 

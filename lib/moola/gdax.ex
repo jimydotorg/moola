@@ -9,11 +9,17 @@ defmodule Moola.GDAX do
   alias Moola.OrderQuery
   alias Moola.OrderLatency
 
-  def dollars_balance do
+  def balance(currency) do
     with {:ok, info} <- ExGdax.get_position,
-      {balance, _} = info["accounts"]["USD"]["balance"] |> Float.parse do
+      cur <- currency |> String.upcase,
+      {balance, _} = info["accounts"][cur]["balance"] |> Float.parse 
+    do
       balance
     end
+  end
+
+  def dollars_balance do
+    balance("usd")
   end
 
   def dollars_purchased(symbol, age) do
@@ -77,7 +83,10 @@ defmodule Moola.GDAX do
       price_time <- info.order_time,
       elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
       true <- elapsed < 2,
-      existing_order <- OrderQuery.query_orders(symbol: symbol, side: "sell", status: ["open", "pending"]) |> Enum.at(0) do
+      true <- D.to_float(size) <= balance(extract_currency(symbol)),
+      existing_order <- OrderQuery.query_orders(symbol: symbol, side: "sell", status: ["open", "pending"]) |> Enum.at(0)
+
+    do
 
       cond do
         existing_order == nil -> 
@@ -117,10 +126,13 @@ defmodule Moola.GDAX do
                               cancel_after: "hour",
                               post_only: true
                             }
-                            |> ZX.i
-                            |> ExGdax.create_order do
+                            |> ZX.i("order")
+                            |> ExGdax.create_order
+    do
       save_order_info(result) 
-      |> ZX.i
+      |> ZX.i("result")
+    else
+      err -> ZX.i(err, "error")
     end
   end
 
@@ -282,6 +294,15 @@ defmodule Moola.GDAX do
   defp equal_sizes?(s1, s2) do
     D.set_context(%D.Context{D.get_context | precision: 3, rounding: :ceiling})
     D.equal?(D.reduce(s1), D.reduce(s2))
+  end
+
+  defp extract_currency(symbol) do
+    with sym <- symbol |> String.upcase,
+      matches <- Regex.split(~r/-/, sym),
+      "usd" <- Enum.at(matches, 1)
+    do
+      Enum.at(matches, 0)
+    end
   end
 
 end
