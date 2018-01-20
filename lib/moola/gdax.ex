@@ -11,7 +11,7 @@ defmodule Moola.GDAX do
 
   def balance(currency) do
     with {:ok, info} <- ExGdax.get_position,
-      cur <- currency |> String.upcase,
+      cur <- currency |> upcase,
       {balance, _} = info["accounts"][cur]["balance"] |> Float.parse 
     do
       balance
@@ -297,9 +297,9 @@ defmodule Moola.GDAX do
   end
 
   defp extract_currency(symbol) do
-    with sym <- symbol |> String.upcase,
+    with sym <- symbol |> upcase,
       matches <- Regex.split(~r/-/, sym),
-      "usd" <- Enum.at(matches, 1)
+      "USD" <- Enum.at(matches, 1)
     do
       Enum.at(matches, 0)
     end
