@@ -44,7 +44,7 @@ defmodule Moola.GDAX do
       max_price <- (max_price || 100000000) |> D.new,
       mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
       my_bid_price <- D.min(max_price, D.sub(mid_price, D.new(0.01))),
-      size = D.div(D.new(dollar_amount), my_bid_price),
+      size <- D.div(D.new(dollar_amount), my_bid_price),
       price_time <- info.order_time,
       elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
       true <- elapsed < 2,
@@ -79,7 +79,7 @@ defmodule Moola.GDAX do
       min_price <- (min_price || 0) |> D.new,
       mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
       my_ask_price <- D.max(min_price, D.add(mid_price, D.new(0.01))),
-      size = D.div(D.new(dollar_amount), my_ask_price),
+      size <- D.div(D.new(dollar_amount), my_ask_price),
       price_time <- info.order_time,
       elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
       true <- elapsed < 2,
@@ -106,6 +106,45 @@ defmodule Moola.GDAX do
       err -> {:error, err} |> ZX.i
     end
   end
+
+  def sell_quantity(symbol, quantity, min_price \\ nil) do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+
+    with info when is_map(info) <- GDAXState.get(symbol),
+      now <- GDAXState.get(:time) |> Map.get(:now),
+      spread <- D.sub(info.lowest_ask, info.highest_bid),
+      true <- D.to_float(spread) < 10.0,
+      min_price <- (min_price || 0) |> D.new,
+      mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
+      my_ask_price <- D.max(min_price, D.add(mid_price, D.new(0.01))),
+      size <- quantity |> D.new,
+      price_time <- info.order_time,
+      elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
+      true <- elapsed < 2,
+      true <- D.to_float(size) <= balance(extract_currency(symbol)),
+      existing_order <- OrderQuery.query_orders(symbol: symbol, side: "sell", status: ["open", "pending"]) |> Enum.at(0)
+
+    do
+
+      cond do
+        existing_order == nil -> 
+          create_sell_order(symbol, my_ask_price, size)
+
+        equal_prices?(existing_order.price, my_ask_price, :floor) && equal_sizes?(existing_order.size, size) ->
+          {:ok, existing_order} 
+
+        true -> 
+          case cancel_order(existing_order) do
+            {:ok, _} -> create_sell_order(symbol, my_ask_price, size)
+            err -> err
+          end
+      end
+
+    else
+      err -> {:error, err} |> ZX.i
+    end
+  end
+
 
   def create_buy_order(symbol, price, size), do: create_order(symbol, price, size, "buy")
   def create_sell_order(symbol, price, size), do: create_order(symbol, price, size, "sell")
