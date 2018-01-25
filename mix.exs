@@ -76,6 +76,11 @@ defmodule Moola.Mixfile do
       "db.migrate": ["ecto.migrate", "ecto.dump"],
       "db.rollback": ["ecto.rollback", "ecto.dump"],
       "db.reset": ["ecto.reset"],
+
+      "prod.build": ["edeliver build release"],
+      "prod.deploy": ["edeliver deploy release production"],
+      "prod.restart": ["edeliver restart production"],
+      "prod.migrate": ["edeliver migrate production"],
     ]
   end
 end
