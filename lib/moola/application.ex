@@ -23,8 +23,8 @@ defmodule Moola.Application do
       worker(Moola.DollarBuyer, []),
       worker(Moola.DollarSeller, []),
 
-      worker(Moola.BinanceState, []),
-      worker(Moola.BinanceSocket, []),
+      # worker(Moola.BinanceState, []),
+      # worker(Moola.BinanceSocket, []),
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
