@@ -35,6 +35,7 @@ defmodule Moola.GDAX do
   end
 
   def buy_fixed_dollars(symbol, dollar_amount, max_price \\ nil) do
+    symbol = atomize(symbol)
     D.set_context(%D.Context{D.get_context | precision: 10})
 
     with info when is_map(info) <- GDAXState.get(symbol),
@@ -70,6 +71,7 @@ defmodule Moola.GDAX do
   end
 
   def sell_fixed_dollars(symbol, dollar_amount, min_price \\ nil) do
+    symbol = atomize(symbol)
     D.set_context(%D.Context{D.get_context | precision: 10})
 
     with info when is_map(info) <- GDAXState.get(symbol),
@@ -80,7 +82,7 @@ defmodule Moola.GDAX do
       mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
       my_ask_price <- D.max(min_price, D.add(mid_price, D.new(0.01))),
       size <- D.div(D.new(dollar_amount), my_ask_price),
-      price_time <- info.order_time,
+      price_time <- info.order_time, 
       elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
       true <- elapsed < 2,
       true <- D.to_float(size) <= balance(extract_currency(symbol)),
