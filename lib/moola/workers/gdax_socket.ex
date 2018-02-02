@@ -141,16 +141,16 @@ defmodule Moola.GDAXSocket do
     GDAXState.put(:time, %{now: now})
 
     # Log API latency every 30 seconds
-    state = with last_log <- state.latency_log,
-      elapsed <- DateTime.diff(DateTime.utc_now, last_log, :milliseconds) do
-      cond do
-        elapsed > 30000 -> 
-          Task.start(fn -> Moola.GDAX.log_latency() end)
-          %{state | latency_log: DateTime.utc_now}
-        true -> 
-          state
-      end
-    end   
+    # state = with last_log <- state.latency_log,
+    #   elapsed <- DateTime.diff(DateTime.utc_now, last_log, :milliseconds) do
+    #   cond do
+    #     elapsed > 30000 -> 
+    #       Task.start(fn -> Moola.GDAX.log_latency() end)
+    #       %{state | latency_log: DateTime.utc_now}
+    #     true -> 
+    #       state
+    #   end
+    # end   
 
     state
   end
