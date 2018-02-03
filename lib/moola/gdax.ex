@@ -34,6 +34,22 @@ defmodule Moola.GDAX do
     |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(D.mult(fill.size, fill.price)) end)
   end
 
+  def last_transaction(symbol) do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+    FillQuery.query_fills(symbol: symbol, now: current_time(), limit: 1) |> Enum.at(0)
+  end
+
+  def unwind_last_transaction(symbol) do
+    with %Fill{} = fill <- last_transaction(symbol) do
+      case fill.side do
+        "sell" -> 
+          buy_quantity(symbol, fill.size)
+        "buy" -> 
+          sell_quantity(symbol, fill.size)
+      end
+    end
+  end
+
   def buy_fixed_dollars(symbol, dollar_amount, max_price \\ nil) do
     symbol = atomize(symbol)
     D.set_context(%D.Context{D.get_context | precision: 10})
@@ -46,6 +62,42 @@ defmodule Moola.GDAX do
       mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
       my_bid_price <- D.min(max_price, D.sub(mid_price, D.new(0.01))),
       size <- D.div(D.new(dollar_amount), my_bid_price),
+      price_time <- info.order_time,
+      elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
+      true <- elapsed < 2,
+      existing_order <- OrderQuery.query_orders(symbol: symbol, side: "buy", status: ["open", "pending"]) |> Enum.at(0) do
+
+      cond do
+        existing_order == nil -> 
+          create_buy_order(symbol, my_bid_price, size)
+
+        equal_prices?(existing_order.price, my_bid_price, :ceiling) && equal_sizes?(existing_order.size, size) ->
+          {:ok, existing_order} 
+
+        true -> 
+          case cancel_order(existing_order) do
+            {:ok, _} -> create_buy_order(symbol, my_bid_price, size)
+            err -> err
+          end
+      end
+
+    else
+      err -> {:error, err} |> ZX.i
+    end
+  end
+
+  def buy_quantity(symbol, quantity, max_price \\ nil) do
+    symbol = atomize(symbol)
+    D.set_context(%D.Context{D.get_context | precision: 10})
+
+    with info when is_map(info) <- GDAXState.get(symbol),
+      now <- GDAXState.get(:time) |> Map.get(:now),
+      spread <- D.sub(info.lowest_ask, info.highest_bid),
+      true <- D.to_float(spread) < 2.0,
+      max_price <- (max_price || 100000000) |> D.new,
+      mid_price <- D.div(D.add(info.highest_bid, info.lowest_ask), D.new(2)),
+      my_bid_price <- D.min(max_price, D.sub(mid_price, D.new(0.01))),
+      size <- quantity |> D.new,
       price_time <- info.order_time,
       elapsed <- DateTime.diff(now, price_time, :milliseconds) / 1000.0,
       true <- elapsed < 2,
@@ -146,7 +198,6 @@ defmodule Moola.GDAX do
       err -> {:error, err} |> ZX.i
     end
   end
-
 
   def create_buy_order(symbol, price, size), do: create_order(symbol, price, size, "buy")
   def create_sell_order(symbol, price, size), do: create_order(symbol, price, size, "sell")
