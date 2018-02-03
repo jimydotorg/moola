@@ -22,6 +22,7 @@ defmodule MoolaWeb.MainSocket do
   ## Channels
   channel "ticker:*", MoolaWeb.TickerChannel
   channel "latency:*", MoolaWeb.LatencyChannel
+  channel "gdax:*", MoolaWeb.GDAXChannel
   channel "dev:*", MoolaWeb.DevChannel
 
   ## Transports

@@ -27,7 +27,7 @@ defmodule Moola.GDAXSocket do
       min_prices: %{},
       asks: %{},
       bids: %{},
-      latency_log: DateTime.utc_now
+      latency_log: DateTime.utc_now,
     }
 
     D.set_context(%D.Context{D.get_context | precision: 2})
@@ -166,9 +166,13 @@ defmodule Moola.GDAXSocket do
     %{state | asks: all_asks, bids: all_bids}
   end
 
+  # Updates to order book
+
   def process_payload("l2update", msg, state) do
-    symbol = msg["product_id"] |> symbolize
     {:ok, now, _} = msg["time"] |> DateTime.from_iso8601
+    symbol = msg["product_id"] |> symbolize
+    uptime_timer_symbol = "update_state_#{symbol}" |> symbolize
+    broadcast_timer_symbol = "broadcast_#{symbol}" |> symbolize
 
     state = msg["changes"]
     |> Enum.reduce(
@@ -183,11 +187,44 @@ defmodule Moola.GDAXSocket do
 
     # Shitty hack:
     case :rand.uniform(50) do
-      1 -> Moola.GDAXState.put(symbol, %{lowest_ask: lowest_ask(state, symbol), highest_bid: highest_bid(state, symbol), order_time: now})     
-      _ -> nil
+      1 -> 
+        ask_price = lowest_ask(state, symbol)
+        bid_price = highest_bid(state, symbol)
+        mid_price = D.div(D.add(ask_price, bid_price), D.new(2))
+        {net, bid, ask} = calculate_pressures(state, symbol)
+
+        Moola.GDAXState.put(symbol, %{
+                                      lowest_ask: ask_price,
+                                      highest_bid: bid_price, 
+                                      price: mid_price, 
+                                      order_time: now, 
+                                      net_pressure: net,
+                                      bid_pressure: bid, 
+                                      ask_pressure: ask,
+                                    })
+
+        case elapsed_time(state, broadcast_timer_symbol, now) do 
+          nil -> state |> reset_time(broadcast_timer_symbol, now)
+          elapsed when elapsed < 0.5 -> state
+          elapsed -> 
+            event = %{ 
+                      symbol: symbol,
+                      netPressure: net,
+                      bidPressure: bid,
+                      askPressure: ask,
+                      price: mid_price |> D.to_float,
+                      askPrice: ask_price |> D.to_float,
+                      bidPrice: bid_price |> D.to_float,
+                      timestamp: now,
+                      id: :os.system_time(:millisecond),
+                    }
+            Moola.NotifyChannels.send_channel("gdax:realtime", "update", %{gdaxRealtime: [event]})
+            state |> reset_time(broadcast_timer_symbol, now)
+        end
+
+      _ -> state
     end
 
-    state
   end
 
   def process_payload(_, msg, state) do
@@ -342,8 +379,8 @@ defmodule Moola.GDAXSocket do
   end
 
   defp highest_bid(state, symbol) do
-    asks = state |> Map.get(:bids) |> Map.get(symbol |> symbolize)
-    {level, size} = asks |> Enum.sort(fn({k1, v1}, {k2, v2}) -> k1 > k2 end) |> Enum.at(0)
+    bids = state |> Map.get(:bids) |> Map.get(symbol |> symbolize)
+    {level, size} = bids |> Enum.sort(fn({k1, v1}, {k2, v2}) -> k1 > k2 end) |> Enum.at(0)
     value_for_key(level)
   end
 
@@ -351,6 +388,70 @@ defmodule Moola.GDAXSocket do
     asks = state |> Map.get(:asks) |> Map.get(symbol |> symbolize)
     {level, size} = asks |> Enum.sort(fn({k1, v1}, {k2, v2}) -> k1 < k2 end) |> Enum.at(0)
     value_for_key(level)
+  end
+
+  # Experimental:
+
+  defp bid_pressure(state, symbol) do
+    bids = state 
+    |> Map.get(:bids) 
+    |> Map.get(symbol |> symbolize)
+    |> Enum.sort(fn({k1, v1}, {k2, v2}) -> k1 > k2 end)
+
+    {highest, _} = bids |> Enum.at(0)
+    highest = value_for_key(highest)
+    limit = D.mult(highest, D.new(0.999))
+    greater_than = D.new(1)
+
+    Enum.reduce(
+      bids, 
+      D.new(0), 
+      fn({level, size}, acc) -> 
+        level_value = value_for_key(level)
+        contrib = case D.compare(level_value, limit) do
+          ^greater_than -> 
+            weight = D.sub(D.new(1), D.div(D.sub(highest, level_value), D.sub(highest, limit)))
+            D.mult(level_value, size) |> D.mult(weight) |> D.round
+          _ -> 
+            D.new(0)
+        end
+        D.add(acc, contrib)
+      end)
+  end
+
+  defp ask_pressure(state, symbol) do
+    asks = state 
+    |> Map.get(:asks) 
+    |> Map.get(symbol |> symbolize)
+    |> Enum.sort(fn({k1, v1}, {k2, v2}) -> k1 < k2 end)
+
+    {lowest, _} = asks |> Enum.at(0)
+    lowest = value_for_key(lowest)
+    limit = D.mult(lowest, D.new(1.001))
+
+    less_than = D.new(-1)
+
+    Enum.reduce(
+      asks, 
+      D.new(0), 
+      fn({level, size}, acc) -> 
+        level_value = value_for_key(level)
+        contrib = case D.compare(level_value, limit) do
+          ^less_than -> 
+            weight = D.sub(D.new(1), D.div(D.sub(level_value, lowest), D.sub(limit, lowest)))
+            D.mult(level_value, size) |> D.mult(weight) |> D.round
+          _ -> 
+            D.new(0)
+        end
+        D.add(acc, contrib)
+      end)
+  end
+
+  defp calculate_pressures(state, symbol) do
+    bid = bid_pressure(state, symbol) |> D.to_float
+    ask = ask_pressure(state, symbol) |> D.to_float
+    net = bid - ask
+    {net, bid, ask}
   end
 
 end
