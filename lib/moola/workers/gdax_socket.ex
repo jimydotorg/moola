@@ -186,7 +186,7 @@ defmodule Moola.GDAXSocket do
         end)
 
     # Shitty hack:
-    case :rand.uniform(50) do
+    case :rand.uniform(100) do
       1 -> 
         ask_price = lowest_ask(state, symbol)
         bid_price = highest_bid(state, symbol)

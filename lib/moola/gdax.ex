@@ -34,13 +34,18 @@ defmodule Moola.GDAX do
     |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(D.mult(fill.size, fill.price)) end)
   end
 
-  def last_transaction(symbol) do
+  def last_fill do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+    FillQuery.query_fills(now: current_time(), limit: 1) |> Enum.at(0)
+  end
+
+  def last_fill(symbol) do
     D.set_context(%D.Context{D.get_context | precision: 10})
     FillQuery.query_fills(symbol: symbol, now: current_time(), limit: 1) |> Enum.at(0)
   end
 
-  def unwind_last_transaction(symbol) do
-    with %Fill{} = fill <- last_transaction(symbol) do
+  def unwind_last_fill(symbol) do
+    with %Fill{} = fill <- last_fill(symbol) do
       case fill.side do
         "sell" -> 
           buy_quantity(symbol, fill.size)
@@ -48,6 +53,16 @@ defmodule Moola.GDAX do
           sell_quantity(symbol, fill.size)
       end
     end
+  end
+
+  def last_order do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+    OrderQuery.query_orders(now: current_time(), limit: 1) |> Enum.at(0)
+  end
+
+  def last_order(symbol) do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+    OrderQuery.query_orders(symbol: symbol, now: current_time(), limit: 1) |> Enum.at(0)
   end
 
   def buy_fixed_dollars(symbol, dollar_amount, max_price \\ nil) do
@@ -237,6 +252,12 @@ defmodule Moola.GDAX do
     end
   end
 
+  def cancel_last_order do
+    with %Order{} <- last_order do
+      cancel_order(last_order)
+    end
+  end
+
   def cancel_all_orders() do
     with {:ok, _} <- ExGdax.cancel_orders() do
       Repo.delete_all(Order)
@@ -259,6 +280,14 @@ defmodule Moola.GDAX do
       |> Enum.each(fn(x) -> save_fill_info(x) end)
     else
       _ -> :error
+    end
+  end
+
+  def retrieve_fills do
+    with %Order{} = order <- last_order,
+      symbol <- order.product_id 
+    do
+      retrieve_fills(symbol)
     end
   end
 
