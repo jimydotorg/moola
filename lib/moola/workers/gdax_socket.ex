@@ -186,42 +186,46 @@ defmodule Moola.GDAXSocket do
         end)
 
     # Shitty hack:
-    case :rand.uniform(150) do
-      1 -> 
-        ask_price = lowest_ask(state, symbol)
-        bid_price = highest_bid(state, symbol)
-        mid_price = D.div(D.add(ask_price, bid_price), D.new(2))
-        {net, bid, ask} = calculate_pressures(state, symbol)
+    with 1 <- :rand.uniform(25),
+      local_now <- DateTime.utc_now,
+      elapsed_update <- elapsed_time(state, uptime_timer_symbol, local_now)
+    do
+      case elapsed_update do
+        nil -> 
+          state |> reset_time(uptime_timer_symbol, local_now)
+        elapsed when elapsed < 0.5 -> 
+          state 
+        elapsed -> 
+          ask_price = lowest_ask(state, symbol)
+          bid_price = highest_bid(state, symbol)
+          mid_price = D.div(D.add(ask_price, bid_price), D.new(2))
+          {net, bid, ask} = calculate_pressures(state, symbol)
 
-        Moola.GDAXState.put(symbol, %{
-                                      lowest_ask: ask_price,
-                                      highest_bid: bid_price, 
-                                      price: mid_price, 
-                                      order_time: now, 
-                                      net_pressure: net,
-                                      bid_pressure: bid, 
-                                      ask_pressure: ask,
-                                    })
+          Moola.GDAXState.put(symbol, %{
+                                        lowest_ask: ask_price,
+                                        highest_bid: bid_price, 
+                                        price: mid_price, 
+                                        order_time: now, 
+                                        net_pressure: net,
+                                        bid_pressure: bid, 
+                                        ask_pressure: ask,
+                                      })
 
-        case elapsed_time(state, broadcast_timer_symbol, now) do 
-          nil -> state |> reset_time(broadcast_timer_symbol, now)
-          elapsed when elapsed < 0.5 -> state
-          elapsed -> 
-            event = %{ 
-                      symbol: symbol,
-                      netPressure: net,
-                      bidPressure: bid,
-                      askPressure: ask,
-                      price: mid_price |> D.to_float,
-                      askPrice: ask_price |> D.to_float,
-                      bidPrice: bid_price |> D.to_float,
-                      timestamp: now,
-                      id: :os.system_time(:millisecond),
-                    }
-            Moola.NotifyChannels.send_channel("gdax:realtime", "update", %{gdaxRealtime: [event]})
-            state |> reset_time(broadcast_timer_symbol, now)
-        end
-
+          event = %{ 
+                    symbol: symbol,
+                    netPressure: net,
+                    bidPressure: bid,
+                    askPressure: ask,
+                    price: mid_price |> D.to_float,
+                    askPrice: ask_price |> D.to_float,
+                    bidPrice: bid_price |> D.to_float,
+                    timestamp: now,
+                    id: :os.system_time(:millisecond),
+                  }
+          Moola.NotifyChannels.send_channel("gdax:realtime", "update", %{gdaxRealtime: [event]})
+          state |> reset_time(uptime_timer_symbol, local_now)
+      end
+    else 
       _ -> state
     end
 
