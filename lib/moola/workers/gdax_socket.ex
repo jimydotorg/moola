@@ -186,14 +186,14 @@ defmodule Moola.GDAXSocket do
         end)
 
     # Shitty hack:
-    with 1 <- :rand.uniform(25),
+    with 1 <- :rand.uniform(100),
       local_now <- DateTime.utc_now,
       elapsed_update <- elapsed_time(state, uptime_timer_symbol, local_now)
     do
       case elapsed_update do
         nil -> 
           state |> reset_time(uptime_timer_symbol, local_now)
-        elapsed when elapsed < 0.5 -> 
+        elapsed when elapsed < 1.0 -> 
           state 
         elapsed -> 
           ask_price = lowest_ask(state, symbol)
