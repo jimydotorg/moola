@@ -291,6 +291,16 @@ defmodule Moola.GDAX do
     end
   end
 
+
+  def buy_eth(dollars, max_price \\ nil), do: buy_fixed_dollars("eth-usd", dollars, max_price)
+  def sell_eth(dollars, min_price \\ nil), do: sell_fixed_dollars("eth-usd", dollars, min_price)
+  
+  def buy_btc(dollars, max_price \\ nil), do: buy_fixed_dollars("btc-usd", dollars, max_price)
+  def sell_btc(dollars, min_price \\ nil), do: sell_fixed_dollars("btc-usd", dollars, min_price)
+
+  def buy_ltc(dollars, max_price \\ nil), do: buy_fixed_dollars("ltc-usd", dollars, max_price)
+  def sell_ltc(dollars, min_price \\ nil), do: sell_fixed_dollars("ltc-usd", dollars, min_price)
+
   @doc """
   Test the GDAX API latency by creating a crap order that will most likely not get filled and
   then immediately deleting it
