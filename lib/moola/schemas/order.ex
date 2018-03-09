@@ -33,6 +33,6 @@ defmodule Moola.Order do
   def changeset(%Order{} = order, attrs) do
     order
     |> cast(attrs, [:gdax_id, :price, :size, :symbol, :product_id, :side, :stp, :type, :time_in_force, :post_only, :created_at, :fill_fees, :filled_size, :executed_value, :status, :settled])
-    |> validate_required([:gdax_id, :price, :size, :symbol, :product_id, :side, :stp, :type, :time_in_force, :post_only, :created_at, :fill_fees, :filled_size, :executed_value, :status, :settled])
+    |> validate_required([:gdax_id, :price, :size, :symbol, :product_id, :side, :type, :time_in_force, :post_only, :created_at, :status])
   end
 end
