@@ -20,6 +20,7 @@ defmodule Moola.Application do
       worker(Moola.GDAXSocket, []),
       worker(Moola.DollarBuyer, []),
       worker(Moola.DollarSeller, []),
+      worker(Moola.QuantitySeller, []),
 
       # worker(Moola.CoinbaseWatcher, []),
 

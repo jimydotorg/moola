@@ -34,6 +34,18 @@ defmodule Moola.GDAX do
     |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(D.mult(fill.size, fill.price)) end)
   end
 
+  def quantity_purchased(symbol, age) do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+    FillQuery.query_fills(side: "buy", symbol: symbol, now: current_time(), age: age)
+    |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(fill.size) end)
+  end
+
+  def quantity_sold(symbol, age) do
+    D.set_context(%D.Context{D.get_context | precision: 10})
+    FillQuery.query_fills(side: "sell", symbol: symbol, now: current_time(), age: age)
+    |> Enum.reduce(D.new(0), fn(fill, sum) -> sum |> D.add(fill.size) end)
+  end
+
   def last_fill do
     D.set_context(%D.Context{D.get_context | precision: 10})
     FillQuery.query_fills(now: current_time(), limit: 1) |> Enum.at(0)
@@ -70,6 +82,7 @@ defmodule Moola.GDAX do
     D.set_context(%D.Context{D.get_context | precision: 10})
 
     with info when is_map(info) <- GDAXState.get(symbol),
+      :ok <- retrieve_fills(symbol),
       now <- GDAXState.get(:time) |> Map.get(:now),
       spread <- D.sub(info.lowest_ask, info.highest_bid),
       true <- D.to_float(spread) < 2.0,
@@ -106,6 +119,7 @@ defmodule Moola.GDAX do
     D.set_context(%D.Context{D.get_context | precision: 10})
 
     with info when is_map(info) <- GDAXState.get(symbol),
+      :ok <- retrieve_fills(symbol),
       now <- GDAXState.get(:time) |> Map.get(:now),
       spread <- D.sub(info.lowest_ask, info.highest_bid),
       true <- D.to_float(spread) < 2.0,
@@ -142,6 +156,7 @@ defmodule Moola.GDAX do
     D.set_context(%D.Context{D.get_context | precision: 10})
 
     with info when is_map(info) <- GDAXState.get(symbol),
+      :ok <- retrieve_fills(symbol),
       now <- GDAXState.get(:time) |> Map.get(:now),
       spread <- D.sub(info.lowest_ask, info.highest_bid),
       true <- D.to_float(spread) < 2.0,
@@ -180,6 +195,7 @@ defmodule Moola.GDAX do
     D.set_context(%D.Context{D.get_context | precision: 10})
 
     with info when is_map(info) <- GDAXState.get(symbol),
+      :ok <- retrieve_fills(symbol),
       now <- GDAXState.get(:time) |> Map.get(:now),
       spread <- D.sub(info.lowest_ask, info.highest_bid),
       true <- D.to_float(spread) < 10.0,
