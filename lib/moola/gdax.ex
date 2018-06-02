@@ -10,9 +10,11 @@ defmodule Moola.GDAX do
   alias Moola.OrderLatency
 
   def balance(currency) do
-    with {:ok, info} <- ExGdax.get_position,
+    with {:ok, list} <- ExGdax.list_accounts,
       cur <- currency |> upcase,
-      {balance, _} = info["accounts"][cur]["balance"] |> Float.parse 
+      info <- list |> Enum.filter(fn(x) -> x["currency"] == cur end) |> Enum.at(0),
+      true <- info != nil,
+      {balance, _} = info["balance"] |> Float.parse 
     do
       balance
     end
@@ -84,6 +86,8 @@ defmodule Moola.GDAX do
     with info when is_map(info) <- GDAXState.get(symbol),
       :ok <- retrieve_fills(symbol),
       now <- GDAXState.get(:time) |> Map.get(:now),
+      false <- info.lowest_ask == nil,
+      false <- info.highest_bid == nil,
       spread <- D.sub(info.lowest_ask, info.highest_bid),
       true <- D.to_float(spread) < 2.0,
       max_price <- (max_price || 100000000) |> D.new,
